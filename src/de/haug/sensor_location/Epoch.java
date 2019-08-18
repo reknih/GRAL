@@ -1,14 +1,13 @@
 package de.haug.sensor_location;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 public class Epoch {
     List<Package> packages;
     EpochType type;
     float distance;
     Long startTime;
+    Map<Long, Package> strongestContact;
 
     public enum EpochType {
         RELAY_WITHDRAWAL,
@@ -21,11 +20,12 @@ public class Epoch {
         this.packages = new LinkedList<>();
         this.distance = Float.NaN;
         this.startTime = null;
+        this.strongestContact = new HashMap<>();
     }
 
     public Epoch(EpochType t, Package p) {
         this(t);
-        this.packages.add(p);
+        addPackage(p);
     }
 
     public Epoch(EpochType t, Package p, long startTime) {
@@ -39,6 +39,15 @@ public class Epoch {
 
     public void addPackage(Package p) {
         packages.add(p);
+        LinkedList<WirelessContact> detectedSensors = new LinkedList<>(p.contacts);
+        detectedSensors.removeIf(c -> !Node.isSensor(c.getNodeId()));
+
+        for (var wc : detectedSensors) {
+            var id = wc.getNodeId();
+            if (strongestContact.get(id).getContactToNode(id).getStrength() <= wc.getStrength()) {
+                strongestContact.put(id, p);
+            }
+        }
     }
 
     public EpochType getType() {

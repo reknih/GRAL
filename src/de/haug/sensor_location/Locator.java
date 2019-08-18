@@ -23,11 +23,11 @@ public class Locator {
         //  change direction of the last one and merge epochs
 
         // Add sensor to dict if new
-        if (!sensors.containsKey(p.sensorId)) {
-            sensors.put(p.sensorId, new Sensor(p.sensorId));
+        if (!sensors.containsKey(p.getSensorId())) {
+            sensors.put(p.getSensorId(), new Sensor(p.getSensorId()));
         }
 
-        Sensor s = sensors.get(p.sensorId);
+        Sensor s = sensors.get(p.getSensorId());
 
         // Add wireless neighbourhood to dictionaries and set maxSignal
         for (var w : p.contacts) {
@@ -44,7 +44,6 @@ public class Locator {
 
         if (detectedRelays.size() > 0) {
             var strongestRelayContact = WirelessContact.getStrongestSignal(detectedRelays);
-            var strongestRelay = topologyAnalyzer.getRelay(strongestRelayContact.getNodeId());
 
             // For every contacted relay, determine heading
             for (var relayContact : detectedRelays) {

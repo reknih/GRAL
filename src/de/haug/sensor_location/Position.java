@@ -22,7 +22,7 @@ public final class Position {
         return dest;
     }
 
-    public double getPositionInBetween() {
+    public float getPositionInBetween() {
         return positionInBetween;
     }
 

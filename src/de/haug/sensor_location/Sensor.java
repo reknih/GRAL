@@ -8,9 +8,11 @@ public class Sensor extends Node {
     public long lastEpochEnd = 0;
     private boolean pristine = true;
     private Position lastKnownPosition = null;
+    private List<Position> checkpoints;
 
     public Sensor(long id) throws Exception {
         super(id);
+        checkpoints = new LinkedList<>();
         mysteryEpochs = new LinkedList<>();
         if (!Node.isSensor(id)) {
             throw new Exception("Id does not match Sensor status");
@@ -58,7 +60,7 @@ public class Sensor extends Node {
             result.addAll(0, mysteryEpochs.get(i).getPackages());
             mysteryEpochs.remove(i);
         }
-        this.lastEpochEnd = result.get(result.size() - 1).timestamp;
+        this.lastEpochEnd = result.get(result.size() - 1).getTimestamp();
         this.lastKnownPosition = result.get(result.size() - 1).position;
         return result;
     }

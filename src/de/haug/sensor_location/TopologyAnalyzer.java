@@ -45,16 +45,34 @@ public class TopologyAnalyzer {
         return relays.get(id);
     }
 
-    public float getDistance(long srcId, long destId) {
-        var startRelay = getRelay(srcId);
-        var destRelay = getRelay(destId);
-
+    private GraphPath<Node, DefaultWeightedEdge> getShortestPath(Node startRelay, Node destRelay) {
         if (startRelay == null || destRelay == null) throw new NoSuchElementException("Ids not found");
 
         ShortestPathAlgorithm<Node, DefaultWeightedEdge> shortestPathAlg = new DijkstraShortestPath<>(g);
         var path = shortestPathAlg.getPath(startRelay, destRelay);
         if (path == null) throw new RuntimeException("No such path in graph");
+        return path;
+    }
 
-        return (float)path.getWeight();
+    public float getDistance(long srcId, long destId) {
+        return (float)getShortestPath(getRelay(srcId), getRelay(destId)).getWeight();
+    }
+
+    public Position getGraphEdgePosition(Position p) {
+        var path = getShortestPath(p.getStart(), p.getDest());
+
+        float leftWeight = p.getPositionInBetween();
+
+        for(DefaultWeightedEdge e : path.getEdgeList()) {
+            var weight = g.getEdgeWeight(e);
+
+            if (weight >= leftWeight) {
+                return new Position(g.getEdgeSource(e), g.getEdgeTarget(e), leftWeight, (float) weight);
+            } else {
+                leftWeight -= weight;
+            }
+        }
+
+        throw new RuntimeException("Path is shorter than length of position argument");
     }
 }

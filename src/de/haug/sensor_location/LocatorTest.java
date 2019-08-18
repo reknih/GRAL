@@ -1,6 +1,7 @@
 package de.haug.sensor_location;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,6 +17,10 @@ class LocatorTest {
     WirelessContact wirelessContact4_0;
     WirelessContact wirelessContact4_1;
     WirelessContact wirelessContact4_2;
+    WirelessContact wirelessContactS3_0;
+    WirelessContact wirelessContactS3_1;
+    WirelessContact wirelessContactS2_0;
+    WirelessContact wirelessContactS2_1;
     Package p1;
     Package p2;
     Package p3;
@@ -54,15 +59,21 @@ class LocatorTest {
         wirelessContact4_1 = new WirelessContact(1004, .7f);
         wirelessContact4_2 = new WirelessContact(1004, .95f);
 
+        wirelessContactS3_0 = new WirelessContact(3, .3f);
+        wirelessContactS3_1 = new WirelessContact(3, .7f);
+
+        wirelessContactS2_0 = new WirelessContact(2, .3f);
+        wirelessContactS2_1 = new WirelessContact(2, .7f);
+
         p1 = new Package(2, 1, wirelessContact1_2);
         p2 = new Package(2, 3, wirelessContact1_1);
         p3 = new Package(2, 4, wirelessContact1_0);
-        p4 = new Package(2, 6, (WirelessContact)null);
-        p5 = new Package(2, 7, (WirelessContact)null);
-        p6 = new Package(2, 8, (WirelessContact)null);
-        p13 = new Package(2, 15, (WirelessContact)null);
-        p14 = new Package(2, 19, (WirelessContact)null);
-        p15 = new Package(2, 21, (WirelessContact)null);
+        p4 = new Package(2, 6);
+        p5 = new Package(2, 7);
+        p6 = new Package(2, 8);
+        p13 = new Package(2, 15);
+        p14 = new Package(2, 19);
+        p15 = new Package(2, 21);
         p7 = new Package(2, 9, wirelessContact2_0);
         p8 = new Package(2, 10, wirelessContact2_1);
         p19 = new Package(2, 11, wirelessContact2_1);
@@ -79,7 +90,7 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void addToEpochs() throws EpochException {
-        var p = new Package(1, 1, (List<WirelessContact>) null);
+        var p = new Package(1, 1);
         Locator.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
         assertTrue(sensor1.mysteryEpochs.size() == 1);
         assertTrue(sensor1.mysteryEpochs.get(0).getLatest().equals(p));
@@ -87,8 +98,8 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void addToExistingEpoch() throws EpochException {
-        var p = new Package(1, 1, (WirelessContact) null);
-        var p2 = new Package(1, 2, (WirelessContact) null);
+        var p = new Package(1, 1);
+        var p2 = new Package(1, 2);
         Locator.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
         Locator.addToEpochs(sensor1, p2, Epoch.EpochType.RELAY_APPROACH);
         assertTrue(sensor1.mysteryEpochs.size() == 1);
@@ -104,8 +115,8 @@ class LocatorTest {
 
         Locator.addToEpochs(sensor1, p1, Epoch.EpochType.RELAY_APPROACH);
         var result = locator.clearSensorEpochs(sensor1);
-        assertTrue(result.size() == 0);
-        assertTrue(sensor1.mysteryEpochs.size() == 1);
+        assertEquals(0, result.size());
+        assertEquals(1, sensor1.mysteryEpochs.size());
     }
 
     @org.junit.jupiter.api.Test
@@ -132,7 +143,7 @@ class LocatorTest {
         var result = locator.feed(p9);
         assertEquals(9, result.size());
         assertEquals(0, locator.sensors.get(2L).mysteryEpochs.size());
-        assertEquals(p9.timestamp, locator.sensors.get(2L).lastEpochEnd);
+        assertEquals(p9.getTimestamp(), locator.sensors.get(2L).lastEpochEnd);
 
         for (int i = 1; i < result.size(); i++) {
             assertTrue(result.get(i - 1).position.getPositionInBetween() <= result.get(i).position.getPositionInBetween());
@@ -234,9 +245,63 @@ class LocatorTest {
     }
 
     @org.junit.jupiter.api.Test
+    void feedRendezVous() throws Exception {
+        var locator = new Locator();
+
+        // Start sensor two first and sensor three second
+        assertEquals(0, locator.feed(p1).size());
+        assertEquals(0, locator.feed(p2).size());
+        assertEquals(0, locator.feed(p3).size());
+
+        assertEquals(0, locator.feed(new Package(3, 5, wirelessContact1_2)).size());
+        assertEquals(0, locator.feed(new Package(3, 6, wirelessContact1_0)).size());
+
+        // Sensor three comes in first at 1002 and transmits data about its rdv with two
+        assertEquals(0, locator.feed(new Package(3, 7)).size());
+        assertEquals(0, locator.feed(new Package(3, 8, wirelessContactS2_0)).size());
+        assertEquals(0, locator.feed(new Package(3, 10, wirelessContactS2_1)).size());
+        assertEquals(0, locator.feed(new Package(3, 12, wirelessContactS2_0)).size());
+
+        assertEquals(0, locator.feed(new Package(3, 13)).size());
+        assertEquals(0, locator.feed(new Package(3, 14, wirelessContact2_0)).size());
+        assertEquals(0, locator.feed(new Package(3, 15, wirelessContact2_1)).size());
+        var resultS3 = locator.feed(new Package(3, 16, wirelessContact2_2));
+        assertEquals(10, resultS3.size());
+        
+        // Sensor two arrived now as well
+        assertEquals(0, locator.feed(new Package(2, 5)).size());
+        assertEquals(0, locator.feed(new Package(2, 6)).size());
+        assertEquals(0, locator.feed(new Package(2, 7)).size());
+        assertEquals(0, locator.feed(new Package(2, 8, wirelessContactS3_0)).size());
+        assertEquals(0, locator.feed(new Package(2, 10, wirelessContactS3_1)).size());
+        assertEquals(0, locator.feed(new Package(2, 12, wirelessContactS3_0)).size());
+        assertEquals(0, locator.feed(new Package(2, 13)).size());
+        assertEquals(0, locator.feed(new Package(2, 15)).size());
+        assertEquals(0, locator.feed(new Package(2, 16, wirelessContact2_0)).size());
+        assertEquals(0, locator.feed(new Package(2, 18, wirelessContact2_1)).size());
+        var resultS2 = locator.feed(new Package(2, 20, wirelessContact2_2));
+        assertEquals(14, resultS2.size());
+
+        // Expect location of slower sensor to be equal to location of second sensor at time of Rdv
+        assertEquals(resultS3.get(4).getPosition().getPositionInBetween(),
+                resultS2.get(7).getPosition().getPositionInBetween(), .1);
+    }
+
+    @org.junit.jupiter.api.Test
     void relayDistanceTest() throws Exception {
         var t = new TopologyAnalyzer();
         assertEquals(100, t.getDistance(1001, 1002));
         assertEquals(150, t.getDistance(1001, 1004));
+    }
+
+    @org.junit.jupiter.api.Test
+    void getGraphEdgePositionTest() throws Exception {
+        var ta = new TopologyAnalyzer();
+        var p = new Position(ta.getRelay(1001), ta.getRelay(1004), 110, 150);
+        var r = ta.getGraphEdgePosition(p);
+        assertEquals(1002L, r.getStart().getId());
+        assertEquals(1004L, r.getDest().getId());
+        assertEquals(50, r.getTotalDistance(), .001);
+        assertEquals(10, r.getPositionInBetween(), .001);
     }
 }

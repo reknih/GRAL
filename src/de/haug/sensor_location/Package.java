@@ -1,29 +1,28 @@
 package de.haug.sensor_location;
 
+import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
+import java.util.Set;
 
 public class Package {
-    long sensorId;
-    long timestamp;
-    List<WirelessContact> contacts;
+    private final long sensorId;
+    private final long timestamp;
+    Set<WirelessContact> contacts;
     Position position = null;
 
-    public Package() {
-        contacts = new LinkedList<>();
-    }
-
-    public Package(long sensorId, long timestamp, List<WirelessContact> contacts) {
-        this();
+    public Package(long sensorId, long timestamp) {
         this.sensorId = sensorId;
         this.timestamp = timestamp;
+        contacts = new HashSet<>();
+    }
+
+    public Package(long sensorId, long timestamp, Set<WirelessContact> contacts) {
+        this(sensorId, timestamp);
         this.contacts = contacts == null ? this.contacts : contacts;
     }
 
     public Package(long sensorId, long timestamp, WirelessContact contact) {
-        this();
-        this.sensorId = sensorId;
-        this.timestamp = timestamp;
+        this(sensorId, timestamp);
         if (contact != null) {
             this.contacts.add(contact);
         }
@@ -31,6 +30,10 @@ public class Package {
 
     public Position getPosition() {
         return position;
+    }
+
+    public long getSensorId() {
+        return sensorId;
     }
 
     public void setPosition(Position position) {
@@ -59,5 +62,27 @@ public class Package {
         LinkedList<WirelessContact> detectedRelays = new LinkedList<>(this.contacts);
         detectedRelays.removeIf(c -> Node.isSensor(c.getNodeId()));
         return WirelessContact.getStrongestSignal(detectedRelays);
+    }
+
+    public class PackageFactory {
+        private Package result;
+
+        public PackageFactory(long id, long timestamp) {
+            result = new Package(id, timestamp);
+        }
+
+        public PackageFactory addContact(WirelessContact wirelessContact) {
+            result.contacts.add(wirelessContact);
+            return this;
+        }
+
+        public PackageFactory setPosition(Position p) {
+            result.setPosition(p);
+            return this;
+        }
+
+        public Package create() {
+            return result;
+        }
     }
 }
