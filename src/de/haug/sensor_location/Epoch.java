@@ -4,10 +4,11 @@ import java.util.*;
 
 public class Epoch {
     List<Package> packages;
-    EpochType type;
-    float distance;
-    Long startTime;
-    Map<Long, Package> strongestContact;
+    private EpochType type;
+    private float distance;
+    private Long startTime;
+    Position endPosition;
+    private Map<Long, Package> strongestContact;
 
     public enum EpochType {
         RELAY_WITHDRAWAL,
@@ -44,7 +45,7 @@ public class Epoch {
 
         for (var wc : detectedSensors) {
             var id = wc.getNodeId();
-            if (strongestContact.get(id).getContactToNode(id).getStrength() <= wc.getStrength()) {
+            if (strongestContact.get(id) == null || strongestContact.get(id).getContactToNode(id) == null || strongestContact.get(id).getContactToNode(id).getStrength() <= wc.getStrength()) {
                 strongestContact.put(id, p);
             }
         }
@@ -100,11 +101,9 @@ public class Epoch {
 
     public void setPackagePositions(Position startingPosition) throws EpochException {
         for (var p : packages) {
-            //if (p.getPosition() == null) {
-                p.setPosition(new Position(startingPosition.getStart(), startingPosition.getDest(),
-                        (float)(startingPosition.getPositionInBetween() + (p.getTimestamp() - getStartTime()) * getAverageSpeed()),
-                        startingPosition.getTotalDistance()));
-            //}
+            p.setPosition(new Position(startingPosition.getStart(), startingPosition.getDest(),
+                    (float)(startingPosition.getPositionInBetween() + (p.getTimestamp() - getStartTime()) * getAverageSpeed()),
+                    startingPosition.getTotalDistance()));
         }
     }
 
@@ -128,13 +127,19 @@ public class Epoch {
      * @return The relay that was next contacted
      */
     public static WirelessContact getNeighbourRelay(List<Epoch> epochs, int index, boolean backwards) throws EpochException, NoSuchElementException {
+        return getLastNonVoyageEpoch(epochs, index, backwards)
+                .getLatest()
+                .getStrongestRelay();
+    }
+
+    public static Epoch getLastNonVoyageEpoch(List<Epoch> epochs, int index, boolean backwards) throws EpochException, NoSuchElementException {
         if ((index < 1 && backwards) || (index > epochs.size() - 2 && !backwards))
             throw new NoSuchElementException("Index at border of list");
 
-        for (int i = i = backwards ? index - 1 : index + 1; i < epochs.size() && i >= 0; i = backwards ? i - 1 : i + 1) {
+        for (int i = backwards ? index - 1 : index + 1; i < epochs.size() && i >= 0; i = backwards ? i - 1 : i + 1) {
             var epoch = epochs.get(i);
             if (!epoch.getType().equals(EpochType.VOYAGE)) {
-                return epoch.getLatest().getStrongestRelay();
+                return epoch;
             }
         }
         throw new NoSuchElementException("No relay contact found in the surroundings");

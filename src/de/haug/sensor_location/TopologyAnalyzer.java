@@ -11,8 +11,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class TopologyAnalyzer {
-    Graph<Node, DefaultWeightedEdge> g = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
-    Map<Long, Relay> relays;
+    private Graph<Node, DefaultWeightedEdge> g = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
+    private Map<Long, Relay> relays;
 
     public TopologyAnalyzer() throws Exception {
         relays = new HashMap<>();
@@ -74,5 +74,23 @@ public class TopologyAnalyzer {
         }
 
         throw new RuntimeException("Path is shorter than length of position argument");
+    }
+
+    public Position getTotalRoutePosition(Position edgePosition, Node start, Node end) {
+        var path = getShortestPath(start, end);
+
+        var criticalEdge = g.getEdge(edgePosition.getStart(), edgePosition.getDest());
+        if (criticalEdge == null)
+            throw new RuntimeException("No edge between start and end vertex");
+        var weight = edgePosition.getPositionInBetween();
+
+        for(var e : path.getEdgeList()) {
+            if (e.equals(criticalEdge)) {
+                break;
+            }
+            weight += g.getEdgeWeight(e);
+        }
+
+        return new Position(start, end, weight, (float)path.getWeight());
     }
 }

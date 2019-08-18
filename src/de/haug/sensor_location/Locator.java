@@ -31,8 +31,10 @@ public class Locator {
 
         // Add wireless neighbourhood to dictionaries and set maxSignal
         for (var w : p.contacts) {
-            if (Node.isSensor(w.getNodeId()) && !sensors.containsKey(w.getNodeId())) {
-                sensors.put(w.getNodeId(), new Sensor(w.getNodeId()));
+            if (Node.isSensor(w.getNodeId())) {
+                if (!sensors.containsKey(w.getNodeId())) {
+                    sensors.put(w.getNodeId(), new Sensor(w.getNodeId()));
+                }
             }
 
             maxSignal = Math.max(w.getStrength(), maxSignal);
@@ -99,6 +101,17 @@ public class Locator {
         } else if (!e.getType().equals(type)) {
             s.addEpoch(type, p);
         } else {
+            // If a checkpoint is found for a time before the timestamp add new epoch
+            //  set end position of previous epoch
+            for (var rdv : s.getCheckpoints()) {
+                if (rdv.getTimestamp() < p.getTimestamp()) {
+                    e.endPosition = rdv;
+                    s.useCheckpoint(rdv);
+                    s.addEpoch(type, p);
+                    return;
+                }
+            }
+
             e.addPackage(p);
         }
     }
@@ -126,12 +139,15 @@ public class Locator {
             Position startingPosition;
             if (epoch.getType().equals(Epoch.EpochType.VOYAGE)) {
                 long lastId;
+                Position lastEpochPosition;
 
                 try {
-                    lastId = epochs.get(i - 1).getLatest().getStrongestRelay().getNodeId();
-                } catch (IndexOutOfBoundsException e) {
+                    lastId = Epoch.getNeighbourRelay(epochs, i, true).getNodeId();
+                    lastEpochPosition = epochs.get(i - 1).getLatest().getPosition();
+                } catch (NoSuchElementException e) {
                     if (s.getLastKnownPosition() != null) {
                         lastId = s.getLastKnownPosition().getDest().getId();
+                        lastEpochPosition = s.getLastKnownPosition();
                     } else {
                         s.mysteryEpochs.remove(i);
                         return new LinkedList<>();
@@ -140,14 +156,21 @@ public class Locator {
 
                 var strongestLastContact = topologyAnalyzer.getRelay(lastId);
                 var strongestFutureContact = topologyAnalyzer.getRelay(
-                        epochs.get(i + 1).getLatest().getStrongestRelay().getNodeId());
+                        Epoch.getNeighbourRelay(epochs, i, false).getNodeId());
 
                 var totalDistance =
                         topologyAnalyzer.getDistance(strongestLastContact.getId(), strongestFutureContact.getId());
-                distance = Math.abs(totalDistance)
-                        - (strongestLastContact.getRadius() + strongestFutureContact.getRadius());
+
+                if (epoch.endPosition == null) {
+                    distance = totalDistance
+                            - (lastEpochPosition.getPositionInBetween() + strongestFutureContact.getRadius());
+                } else {
+                    distance = topologyAnalyzer.getTotalRoutePosition(epoch.endPosition, strongestLastContact,
+                            strongestFutureContact).getPositionInBetween() - lastEpochPosition.getPositionInBetween();
+                }
+
                 startingPosition = new Position(strongestLastContact, strongestFutureContact,
-                        strongestLastContact.getRadius(), totalDistance);
+                        lastEpochPosition.getPositionInBetween(), totalDistance);
             } else {
                 var strongestContact = topologyAnalyzer.getRelay(epoch.getLatest().getStrongestRelay().getNodeId());
                 distance = strongestContact.getRadius();
@@ -210,6 +233,27 @@ public class Locator {
 
             epoch.setDistance(distance);
             epoch.setPackagePositions(startingPosition);
+
+            var strongestContacts = new HashMap<Long, Package>();
+            for (var p : epoch.getPackages()) {
+                for (var wc : p.contacts) {
+                    if (Node.isSensor(wc.getNodeId())) {
+                        var strengthPrecedent = strongestContacts.get(wc.getNodeId());
+                        if (strengthPrecedent == null) {
+                            strongestContacts.put(wc.getNodeId(), p);
+                        } else if (strengthPrecedent.getContactToNode(wc.getNodeId()).getStrength()
+                                <= wc.getStrength()) {
+                            strongestContacts.put(wc.getNodeId(), p);
+                        }
+                    }
+                }
+            }
+
+            for (var k : strongestContacts.keySet()) {
+                var contactedSensor = sensors.get(k);
+                var strongPackage = strongestContacts.get(k);
+                contactedSensor.addRendezVous(new RendezVous(topologyAnalyzer.getGraphEdgePosition(strongPackage.getPosition()), contactedSensor, strongPackage.getTimestamp()));
+            }
         }
 
         return s.mergeAndClearEpochs(s.getMysteryEpochs().size());

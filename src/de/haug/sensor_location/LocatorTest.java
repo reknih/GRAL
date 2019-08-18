@@ -304,4 +304,15 @@ class LocatorTest {
         assertEquals(50, r.getTotalDistance(), .001);
         assertEquals(10, r.getPositionInBetween(), .001);
     }
+
+    @org.junit.jupiter.api.Test
+    void getTotalRoutePositionTest() throws Exception {
+        var ta = new TopologyAnalyzer();
+        var p = new Position(ta.getRelay(1002), ta.getRelay(1004), 30, 50);
+        var r = ta.getTotalRoutePosition(p, ta.getRelay(1001), ta.getRelay(1004));
+        assertEquals(1001L, r.getStart().getId());
+        assertEquals(1004L, r.getDest().getId());
+        assertEquals(150, r.getTotalDistance(), .001);
+        assertEquals(130, r.getPositionInBetween(), .001);
+    }
 }

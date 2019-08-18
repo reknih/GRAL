@@ -8,7 +8,8 @@ public class Sensor extends Node {
     public long lastEpochEnd = 0;
     private boolean pristine = true;
     private Position lastKnownPosition = null;
-    private List<Position> checkpoints;
+    private List<RendezVous> checkpoints;
+    private long lastPurge = Long.MIN_VALUE;
 
     public Sensor(long id) throws Exception {
         super(id);
@@ -62,10 +63,25 @@ public class Sensor extends Node {
         }
         this.lastEpochEnd = result.get(result.size() - 1).getTimestamp();
         this.lastKnownPosition = result.get(result.size() - 1).position;
+        this.lastPurge = this.lastEpochEnd;
         return result;
     }
 
     public Position getLastKnownPosition() {
         return lastKnownPosition;
+    }
+
+    public void addRendezVous(RendezVous rendezVous) {
+        if (rendezVous.getTimestamp() > lastPurge) {
+            checkpoints.add(rendezVous);
+        }
+    }
+
+    public List<RendezVous> getCheckpoints() {
+        return checkpoints;
+    }
+
+    public void useCheckpoint(RendezVous checkpoint) {
+        checkpoints.remove(checkpoint);
     }
 }

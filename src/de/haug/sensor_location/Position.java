@@ -1,6 +1,6 @@
 package de.haug.sensor_location;
 
-public final class Position {
+public class Position {
     private final Node start;
     private final Node dest;
 
