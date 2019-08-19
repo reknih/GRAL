@@ -131,11 +131,18 @@ public class Locator {
                 lastId = Epoch.getNeighbourRelay(epochs, i, true).getNodeId();
                 lastEpochPosition = epochs.get(i - 1).getLatest().getPosition();
             } catch (NoSuchElementException e) {
+                var nextRelay = Epoch.getNeighbourRelay(epochs, i, false);
+
                 if (s.getLastKnownPosition() != null) {
                     lastId = s.getLastKnownPosition().getDest().getId();
                     lastEpochPosition = s.getLastKnownPosition();
+                } else if (nextRelay != null) {
+                    for (var pack : epoch.getPackages()) {
+                        pack.setPosition(new Position(null, topologyAnalyzer.getRelay(nextRelay.getNodeId()),
+                                Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY));
+                    }
+                    return null;
                 } else {
-                    s.mysteryEpochs.remove(i);
                     return new LinkedList<>();
                 }
             }
@@ -232,16 +239,20 @@ public class Locator {
         var epochs = s.getMysteryEpochs();
 
         // Merge start epoch with withdrawal if applicable
-        if (epochs.size() > 1) {
-            var firstEpoch = epochs.get(0);
-            var secondEpoch = epochs.get(1);
-            if (firstEpoch.getPackages().size() == 1 && firstEpoch.getType() == Epoch.EpochType.RELAY_APPROACH) {
-                long relayId = firstEpoch.getPackages().get(0).getStrongestRelay().getNodeId();
-                if (secondEpoch.getPackages().get(0).getContactToNode(relayId) != null) {
-                    secondEpoch.packages.add(0, firstEpoch.getPackages().get(0));
+        for (int i = 0; i < epochs.size() - 1; i++) {
+            var epoch = epochs.get(i);
+            if (epoch.getType().equals(Epoch.EpochType.VOYAGE)) continue;
+            var secondEpoch = epochs.get(i + 1);
+            if (epoch.getPackages().size() == 1 && epoch.getType().equals(Epoch.EpochType.RELAY_APPROACH)) {
+                long relayId = epoch.getPackages().get(0).getStrongestRelay().getNodeId();
+                if (secondEpoch.getType().equals(Epoch.EpochType.VOYAGE)) {
+                    epoch.setType(Epoch.EpochType.RELAY_WITHDRAWAL);
+                } else if (secondEpoch.getPackages().get(0).getContactToNode(relayId) != null) {
+                    secondEpoch.packages.add(0, epoch.getPackages().get(0));
                     epochs.remove(0);
                 }
             }
+            break;
         }
 
         for (int i = 0; i < epochs.size(); i++) {

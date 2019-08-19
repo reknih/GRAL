@@ -353,6 +353,36 @@ class LocatorTest {
     }
 
     @org.junit.jupiter.api.Test
+    void feedUnknownStartTest() throws Exception {
+        var locator = new Locator();
+
+        assertEquals(0, locator.feed(new Package(3, 1)).size());
+        assertEquals(0, locator.feed(new Package(3, 2)).size());
+        assertEquals(0, locator.feed(new Package(3, 3, wirelessContact3_1)).size());
+        assertEquals(0, locator.feed(new Package(3, 4)).size());
+        assertEquals(0, locator.feed(new Package(3, 8)).size());
+        assertEquals(0, locator.feed(new Package(3, 12)).size());
+        assertEquals(0, locator.feed(new Package(3, 20)).size());
+        assertEquals(0, locator.feed(new Package(3, 24)).size());
+
+        var resultS3 = locator.feed(new Package(3, 28, wirelessContact2_2));
+        assertEquals(9, resultS3.size());// 120
+        assertNull(resultS3.get(0).getPosition().getStart());
+        assertEquals(1003, resultS3.get(0).getPosition().getDest().getId());
+        assertEquals(Float.POSITIVE_INFINITY, resultS3.get(0).getPosition().getPositionInBetween());
+        assertEquals(Float.POSITIVE_INFINITY, resultS3.get(0).getPosition().getTotalDistance());
+
+        assertNull(resultS3.get(1).getPosition().getStart());
+        assertEquals(1003, resultS3.get(1).getPosition().getDest().getId());
+        assertEquals(Float.POSITIVE_INFINITY, resultS3.get(1).getPosition().getPositionInBetween());
+        assertEquals(Float.POSITIVE_INFINITY, resultS3.get(1).getPosition().getTotalDistance());
+
+        assertEquals(1003, resultS3.get(2).getPosition().getStart().getId());
+        assertEquals(1002, resultS3.get(2).getPosition().getDest().getId());
+        assertEquals(70, resultS3.get(2).getPosition().getTotalDistance());
+    }
+
+    @org.junit.jupiter.api.Test
     void getEarliestSharedNodeTest() throws Exception {
         var ta = new TopologyAnalyzer();
 

@@ -96,7 +96,11 @@ public class Epoch {
             throw new EpochException("Distance not set");
         }
 
-        return distance / getDuration();
+        var duration = getDuration();
+
+        if (duration == 0) return 1;
+
+        return distance / duration;
     }
 
     public void setPackagePositions(Position startingPosition) throws EpochException {
@@ -158,5 +162,9 @@ public class Epoch {
             }
         }
         throw new NoSuchElementException("No relay contact found in the surroundings");
+    }
+
+    public void setType(EpochType type) {
+        this.type = type;
     }
 }
