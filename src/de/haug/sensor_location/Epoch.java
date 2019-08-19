@@ -107,6 +107,21 @@ public class Epoch {
         }
     }
 
+    public Epoch split(Package splitPackage, Position endPosition) {
+        var splitIndex = packages.indexOf(splitPackage);
+        this.endPosition = endPosition;
+        if (splitIndex >= packages.size()) return null;
+        var subList = packages.subList(splitIndex + 1, packages.size());
+
+        var returnEpoch = new Epoch(getType());
+        returnEpoch.startTime = splitPackage.getTimestamp();
+        returnEpoch.packages.addAll(subList);
+
+        subList.clear();
+
+        return returnEpoch;
+    }
+
     public static EpochType typeFromDirection(Direction d) {
         switch (d) {
             case APPROACH:

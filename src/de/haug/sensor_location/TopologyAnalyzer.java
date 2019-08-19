@@ -93,4 +93,26 @@ public class TopologyAnalyzer {
 
         return new Position(start, end, weight, (float)path.getWeight());
     }
+
+    public Node getEarliestSharedNode(Node start1, Node start2, Node dest) {
+        var path1 = getShortestPath(start1, dest);
+        var path2 = getShortestPath(start2, dest);
+
+        var longerPath = path1.getLength() <= path2.getLength() ? path1 : path2;
+        var shorterPath = path1.getLength() <= path2.getLength() ? path2 : path1;
+
+        var difference = longerPath.getLength() - shorterPath.getLength();
+
+        var longerPathEdges = longerPath.getEdgeList();
+        var shorterPathEdges = shorterPath.getEdgeList();
+
+        for (int i = longerPath.getLength() - 1; i >= 0; i--) {
+            var longEdge = longerPathEdges.get(i);
+            var shortEdge = shorterPathEdges.get(i - difference);
+
+            if (!g.getEdgeSource(longEdge).equals(g.getEdgeSource(shortEdge))) return  g.getEdgeTarget(longEdge);
+        }
+
+        return start1;
+    }
 }

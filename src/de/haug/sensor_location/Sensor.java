@@ -77,6 +77,23 @@ public class Sensor extends Node {
         }
     }
 
+    public Long getLastRelayContactId() {
+        for (int i = getMysteryEpochs().size() - 1; i >= 0; i--) {
+            var e = getMysteryEpochs().get(i);
+            var relayCandidate = e.getLatest().getStrongestRelay();
+            if (relayCandidate != null) {
+                return relayCandidate.getNodeId();
+            }
+        }
+
+        if (lastKnownPosition != null) {
+            if (lastKnownPosition.getDest() != null) return lastKnownPosition.getDest().getId();
+            if (lastKnownPosition.getStart() != null) return lastKnownPosition.getStart().getId();
+        }
+
+        return null;
+    }
+
     public List<RendezVous> getCheckpoints() {
         return checkpoints;
     }

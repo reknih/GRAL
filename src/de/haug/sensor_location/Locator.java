@@ -116,6 +116,117 @@ public class Locator {
         }
     }
 
+    private List<Package> calculateEpochPosition(Sensor s, int i) {
+        float distance;
+        Position startingPosition;
+
+        var epochs = s.getMysteryEpochs();
+        var epoch = epochs.get(i);
+
+        if (epoch.getType().equals(Epoch.EpochType.VOYAGE)) {
+            long lastId;
+            Position lastEpochPosition;
+
+            try {
+                lastId = Epoch.getNeighbourRelay(epochs, i, true).getNodeId();
+                lastEpochPosition = epochs.get(i - 1).getLatest().getPosition();
+            } catch (NoSuchElementException e) {
+                if (s.getLastKnownPosition() != null) {
+                    lastId = s.getLastKnownPosition().getDest().getId();
+                    lastEpochPosition = s.getLastKnownPosition();
+                } else {
+                    s.mysteryEpochs.remove(i);
+                    return new LinkedList<>();
+                }
+            }
+
+            var strongestLastContact = topologyAnalyzer.getRelay(lastId);
+            var strongestFutureContact = topologyAnalyzer.getRelay(
+                    Epoch.getNeighbourRelay(epochs, i, false).getNodeId());
+
+            var totalDistance =
+                    topologyAnalyzer.getDistance(strongestLastContact.getId(), strongestFutureContact.getId());
+
+            if (epoch.endPosition == null) {
+                distance = totalDistance
+                        - (lastEpochPosition.getPositionInBetween() + strongestFutureContact.getRadius());
+            } else {
+                distance = topologyAnalyzer.getTotalRoutePosition(epoch.endPosition, strongestLastContact,
+                        strongestFutureContact).getPositionInBetween() - lastEpochPosition.getPositionInBetween();
+            }
+
+            startingPosition = new Position(strongestLastContact, strongestFutureContact,
+                    lastEpochPosition.getPositionInBetween(), totalDistance);
+        } else {
+            var strongestContact = topologyAnalyzer.getRelay(epoch.getLatest().getStrongestRelay().getNodeId());
+            distance = strongestContact.getRadius();
+
+            // Find distance and starting position.
+            Relay prevRelay = null;
+            Relay nextRelay = null;
+            try {
+                prevRelay = topologyAnalyzer.getRelay(Epoch.getNeighbourRelay(epochs, i, true).getNodeId());
+            } catch (NoSuchElementException e) {
+                try {
+                    if (s.getLastKnownPosition() != null) {
+                        prevRelay = (Relay)s.getLastKnownPosition().getDest();
+                    }
+                } catch (ClassCastException f) {
+                    // Remain null
+                }
+            }
+            try {
+                nextRelay = topologyAnalyzer.getRelay(Epoch.getNeighbourRelay(epochs, i, false).getNodeId());
+            } catch (NoSuchElementException e) {
+                // Remain null
+            }
+
+            if (epoch.getType().equals(Epoch.EpochType.RELAY_APPROACH)) {
+                // If the sensor is approaching it may have entered on either side of the relay radius.
+                if (prevRelay != null) {
+                    var totalDistance = topologyAnalyzer.getDistance(prevRelay.getId(),
+                            strongestContact.getId());
+                    startingPosition = new Position(prevRelay, strongestContact,
+                            topologyAnalyzer.getDistance(prevRelay.getId(),
+                                    strongestContact.getId()) - strongestContact.getRadius(), totalDistance);
+                } else {
+                    // Can not determine last node, fallback for first iteration
+                    //  If the previous package position is unknown, set it to new Position(null, node, INF, INF)
+                    //  If it is known then process normally
+                    if (nextRelay != null) {
+                        for (var pack : epoch.getPackages()) {
+                            pack.setPosition(new Position(strongestContact, nextRelay, 0,
+                                    topologyAnalyzer.getDistance(strongestContact.getId(), nextRelay.getId())));
+                        }
+                        return null;
+                    }
+
+                    return new LinkedList<>();
+                }
+            } else {
+                // If the sensor is withdrawing, the starting position is always assumed to be the center
+                // The next or prev relay are used to determine which sign the direction has (abs = r)
+
+                // Push out the already cleared epochs
+                if (nextRelay == null) {
+                    if (i > 0) {
+                        return s.mergeAndClearEpochs(i);
+                    }
+                    return new LinkedList<>();
+                }
+
+                var totalDistance = topologyAnalyzer.getDistance(nextRelay.getId(),
+                        strongestContact.getId());
+                startingPosition = new Position(strongestContact, nextRelay, 0, totalDistance);
+                // Assume there was no change in directionality
+                distance = strongestContact.getRadius();
+            }
+        }
+
+        epoch.setDistance(distance);
+        epoch.setPackagePositions(startingPosition);
+        return null;
+    }
 
     List<Package> clearSensorEpochs(Sensor s) throws EpochException {
         var epochs = s.getMysteryEpochs();
@@ -135,104 +246,9 @@ public class Locator {
 
         for (int i = 0; i < epochs.size(); i++) {
             var epoch = epochs.get(i);
-            float distance;
-            Position startingPosition;
-            if (epoch.getType().equals(Epoch.EpochType.VOYAGE)) {
-                long lastId;
-                Position lastEpochPosition;
 
-                try {
-                    lastId = Epoch.getNeighbourRelay(epochs, i, true).getNodeId();
-                    lastEpochPosition = epochs.get(i - 1).getLatest().getPosition();
-                } catch (NoSuchElementException e) {
-                    if (s.getLastKnownPosition() != null) {
-                        lastId = s.getLastKnownPosition().getDest().getId();
-                        lastEpochPosition = s.getLastKnownPosition();
-                    } else {
-                        s.mysteryEpochs.remove(i);
-                        return new LinkedList<>();
-                    }
-                }
-
-                var strongestLastContact = topologyAnalyzer.getRelay(lastId);
-                var strongestFutureContact = topologyAnalyzer.getRelay(
-                        Epoch.getNeighbourRelay(epochs, i, false).getNodeId());
-
-                var totalDistance =
-                        topologyAnalyzer.getDistance(strongestLastContact.getId(), strongestFutureContact.getId());
-
-                if (epoch.endPosition == null) {
-                    distance = totalDistance
-                            - (lastEpochPosition.getPositionInBetween() + strongestFutureContact.getRadius());
-                } else {
-                    distance = topologyAnalyzer.getTotalRoutePosition(epoch.endPosition, strongestLastContact,
-                            strongestFutureContact).getPositionInBetween() - lastEpochPosition.getPositionInBetween();
-                }
-
-                startingPosition = new Position(strongestLastContact, strongestFutureContact,
-                        lastEpochPosition.getPositionInBetween(), totalDistance);
-            } else {
-                var strongestContact = topologyAnalyzer.getRelay(epoch.getLatest().getStrongestRelay().getNodeId());
-                distance = strongestContact.getRadius();
-
-                // Find distance and starting position.
-                Relay prevRelay = null;
-                Relay nextRelay = null;
-                try {
-                    prevRelay = topologyAnalyzer.getRelay(Epoch.getNeighbourRelay(epochs, i, true).getNodeId());
-                } catch (NoSuchElementException e) {
-                    try {
-                        if (s.getLastKnownPosition() != null) {
-                            prevRelay = (Relay)s.getLastKnownPosition().getDest();
-                        }
-                    } catch (ClassCastException f) {
-                        // Remain null
-                    }
-                }
-                try {
-                    nextRelay = topologyAnalyzer.getRelay(Epoch.getNeighbourRelay(epochs, i, false).getNodeId());
-                } catch (NoSuchElementException e) {
-                    // Remain null
-                }
-
-                if (epoch.getType().equals(Epoch.EpochType.RELAY_APPROACH)) {
-                    // If the sensor is approaching it may have entered on either side of the relay radius.
-                    if (prevRelay != null) {
-                        var totalDistance = topologyAnalyzer.getDistance(prevRelay.getId(),
-                                strongestContact.getId());
-                        startingPosition = new Position(prevRelay, strongestContact,
-                                topologyAnalyzer.getDistance(prevRelay.getId(),
-                                        strongestContact.getId()) - strongestContact.getRadius(), totalDistance);
-                    } else {
-                        // Can not determine last node
-                        // TODO what if this is the first time this happens?
-                        //  If the previous package position is unknown, set it to new Position(null, node, INF, INF)
-                        //   and delete the epoch
-                        //  If it is known then process normally
-                        return new LinkedList<>();
-                    }
-                } else {
-                    // If the sensor is withdrawing, the starting position is always assumed to be the center
-                    // The next or prev relay are used to determine which sign the direction has (abs = r)
-
-                    // Push out the already cleared epochs
-                    if (nextRelay == null) {
-                        if (i > 0) {
-                            return s.mergeAndClearEpochs(i);
-                        }
-                        return new LinkedList<>();
-                    }
-
-                    var totalDistance = topologyAnalyzer.getDistance(nextRelay.getId(),
-                            strongestContact.getId());
-                    startingPosition = new Position(strongestContact, nextRelay, 0, totalDistance);
-                    // Assume there was no change in directionality
-                    distance = strongestContact.getRadius();
-                }
-            }
-
-            epoch.setDistance(distance);
-            epoch.setPackagePositions(startingPosition);
+            var result = calculateEpochPosition(s, i);
+            if (result != null) return result;
 
             var strongestContacts = new HashMap<Long, Package>();
             for (var p : epoch.getPackages()) {
@@ -252,6 +268,33 @@ public class Locator {
             for (var k : strongestContacts.keySet()) {
                 var contactedSensor = sensors.get(k);
                 var strongPackage = strongestContacts.get(k);
+                if (strongPackage.getTimestamp() > epoch.getEndTime()) continue;
+                if (epoch.getType().equals(Epoch.EpochType.VOYAGE)) {
+                    // Check for each contact if earliest possible confluence is greater than the calculated position
+                    var lastRelayId = contactedSensor.getLastRelayContactId();
+                    if (lastRelayId != null) {
+                        var lastRelay = topologyAnalyzer.getRelay(lastRelayId);
+                        var earliestConfluence = topologyAnalyzer.getEarliestSharedNode(
+                                strongPackage.position.getStart(), lastRelay, strongPackage.position.getDest());
+
+                        var minDistance = topologyAnalyzer.getDistance(
+                                strongPackage.position.getStart().getId(), earliestConfluence.getId());
+
+                        if (strongPackage.getPosition().getPositionInBetween() < minDistance) {
+                            // Split epoch and recalculate (otherwise we'd end up with an impossible contact)
+                            var newEpoch = epoch.split(strongPackage, topologyAnalyzer.getGraphEdgePosition(
+                                    new Position(strongPackage.position.getStart(),
+                                    strongPackage.position.getDest(), minDistance,
+                                    strongPackage.position.getTotalDistance())));
+                            if (newEpoch != null) s.mysteryEpochs.add(i + 1, newEpoch);
+
+                            result = calculateEpochPosition(s, i);
+                            if (result != null) return result;
+                        }
+                    }
+                }
+
+                // Do this once final positions are determined
                 contactedSensor.addRendezVous(new RendezVous(topologyAnalyzer.getGraphEdgePosition(strongPackage.getPosition()), contactedSensor, strongPackage.getTimestamp()));
             }
         }

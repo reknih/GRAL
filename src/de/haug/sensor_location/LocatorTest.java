@@ -14,6 +14,9 @@ class LocatorTest {
     WirelessContact wirelessContact2_0;
     WirelessContact wirelessContact2_1;
     WirelessContact wirelessContact2_2;
+    WirelessContact wirelessContact3_0;
+    WirelessContact wirelessContact3_1;
+    WirelessContact wirelessContact3_2;
     WirelessContact wirelessContact4_0;
     WirelessContact wirelessContact4_1;
     WirelessContact wirelessContact4_2;
@@ -54,6 +57,10 @@ class LocatorTest {
         wirelessContact2_0 = new WirelessContact(1002, .1f);
         wirelessContact2_1 = new WirelessContact(1002, .7f);
         wirelessContact2_2 = new WirelessContact(1002, .95f);
+
+        wirelessContact3_0 = new WirelessContact(1003, .1f);
+        wirelessContact3_1 = new WirelessContact(1003, .7f);
+        wirelessContact3_2 = new WirelessContact(1003, .95f);
 
         wirelessContact4_0 = new WirelessContact(1004, .1f);
         wirelessContact4_1 = new WirelessContact(1004, .7f);
@@ -131,6 +138,7 @@ class LocatorTest {
         assertEquals(3, locator.sensors.get(2L).mysteryEpochs.get(0).getPackages().size());
         assertEquals(locator.sensors.get(2L).mysteryEpochs.get(0).getType(), Epoch.EpochType.RELAY_WITHDRAWAL);
         assertEquals(0, locator.feed(p4).size());
+        assertEquals(1001, locator.sensors.get(2L).getLastRelayContactId());
         assertEquals(2, locator.sensors.get(2L).mysteryEpochs.size());
         assertEquals(locator.sensors.get(2L).mysteryEpochs.get(1).getType(), Epoch.EpochType.VOYAGE);
         assertEquals(0, locator.feed(p5).size());
@@ -144,6 +152,7 @@ class LocatorTest {
         assertEquals(9, result.size());
         assertEquals(0, locator.sensors.get(2L).mysteryEpochs.size());
         assertEquals(p9.getTimestamp(), locator.sensors.get(2L).lastEpochEnd);
+        assertEquals(1002, locator.sensors.get(2L).getLastRelayContactId());
 
         for (int i = 1; i < result.size(); i++) {
             assertTrue(result.get(i - 1).position.getPositionInBetween() <= result.get(i).position.getPositionInBetween());
@@ -315,4 +324,40 @@ class LocatorTest {
         assertEquals(150, r.getTotalDistance(), .001);
         assertEquals(130, r.getPositionInBetween(), .001);
     }
+
+    // TODO Remain test
+
+
+    @org.junit.jupiter.api.Test
+    void feedRendezVousJunctionTest1() throws Exception {
+        var locator = new Locator();
+
+        assertEquals(0, locator.feed(p1).size());
+        assertEquals(0, locator.feed(p2).size());
+        assertEquals(0, locator.feed(p3).size());
+
+        assertEquals(0, locator.feed(new Package(3, 1, wirelessContact3_2)).size());
+        assertEquals(0, locator.feed(new Package(3, 4)).size()); // 20
+        assertEquals(0, locator.feed(new Package(3, 8)).size()); // 40
+        assertEquals(0, locator.feed(new Package(3, 12, wirelessContactS2_1)).size());// 60
+        assertEquals(0, locator.feed(new Package(3, 20)).size());// 80
+        assertEquals(0, locator.feed(new Package(3, 24)).size());// 100
+
+        var resultS3 = locator.feed(new Package(3, 28, wirelessContact4_2));
+        assertEquals(7, resultS3.size());// 120
+        assertTrue(resultS3.get(3).getPosition().getPositionInBetween() >= locator.topologyAnalyzer.getDistance(1003, 1002));
+
+        assertEquals(0, locator.feed(new Package(2, 6)).size());
+        assertEquals(0, locator.feed(new Package(2, 8)).size());
+        assertEquals(0, locator.feed(new Package(2, 12, wirelessContactS3_1)).size());
+    }
+
+    @org.junit.jupiter.api.Test
+    void getEarliestSharedNodeTest() throws Exception {
+        var ta = new TopologyAnalyzer();
+
+        assertEquals(ta.getRelay(1002), ta.getEarliestSharedNode(ta.getRelay(1001), ta.getRelay(1003), ta.getRelay(1002)));
+        assertEquals(ta.getRelay(1001), ta.getEarliestSharedNode(ta.getRelay(1001), ta.getRelay(1001), ta.getRelay(1002)));
+    }
+
 }
