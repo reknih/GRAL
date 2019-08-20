@@ -2,9 +2,22 @@ package de.haug.sensor_location;
 
 import java.util.Collection;
 
+/**
+ * Class representing a detection of another wireless-enabled node
+ */
+@SuppressWarnings("WeakerAccess")
 public class WirelessContact {
+    /**
+     * Id of the contacted node
+     */
     private long nodeId;
+    /**
+     * Signal strength
+     */
     private float strength;
+    /**
+     * Direction of the contact relative to the last package
+     */
     private Direction direction;
 
     /**
@@ -18,11 +31,17 @@ public class WirelessContact {
         this.direction = Direction.UNKNOWN;
     }
 
-    public long getNodeId() {
+    /**
+     * @return The Id of the contacted node
+     */
+    long getNodeId() {
         return nodeId;
     }
 
-    public float getStrength() {
+    /**
+     * @return The signal strength of the contact
+     */
+    float getStrength() {
         return strength;
     }
 
@@ -45,11 +64,17 @@ public class WirelessContact {
         return max;
     }
 
-    public void setDirection(Direction direction) {
+    /**
+     * @param direction The direction of the contact relative to the last package
+     */
+    void setDirection(Direction direction) {
         this.direction = direction;
     }
 
-    public Direction getDirection() {
+    /**
+     * @return The direction of the contact relative to the last package
+     */
+    Direction getDirection() {
         return direction;
     }
 }

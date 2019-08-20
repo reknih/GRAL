@@ -2,26 +2,45 @@ package de.haug.sensor_location;
 
 import java.util.*;
 
+/**
+ * Class that can annotate packages with estimated positions.
+ */
 public class Locator {
 
-    // The signal strength above which a sensor is
-    // assumed to have the same location as the relay node
-    float maxSignal = .9f;
-    // Tolerance w.r.t maxSignal
-    float tolerance = .1f;
+    /**
+     * The signal strength above which a sensor is
+     * assumed to have the same location as the relay node.
+     */
+    private float maxSignal = .9f;
 
+    /**
+     * Tolerance w.r.t maxSignal
+     */
+    private float tolerance = .1f;
+
+    /**
+     * Mapping the sensor's id's to the objects
+     */
     Map<Long, Sensor> sensors;
     TopologyAnalyzer topologyAnalyzer;
 
-    public Locator() throws Exception {
+    /**
+     * Constructs a new Locator instance
+     */
+    public Locator() {
         sensors = new HashMap<>();
         topologyAnalyzer = new TopologyAnalyzer();
     }
 
-    public List<Package> feed(Package p) throws Exception {
-        // TODO If second-last element had same direction as this one,
-        //  change direction of the last one and merge epochs
-
+    /**
+     * Feed a package into the locator. The package will be added to the localization queue of the sensors.
+     * The return value will be an empty list if no new localizations could be made or have several items if
+     * localization using p has become possible.
+     * @param p The package to feed
+     * @return List of previously fed, localized packages
+     */
+    @SuppressWarnings("WeakerAccess")
+    public List<Package> feed(Package p) {
         // Add sensor to dict if new
         if (!sensors.containsKey(p.getSensorId())) {
             sensors.put(p.getSensorId(), new Sensor(p.getSensorId()));
@@ -94,7 +113,14 @@ public class Locator {
         return new LinkedList<>();
     }
 
-    static void addToEpochs(Sensor s, Package p, Epoch.EpochType type) throws EpochException {
+    /**
+     * Adds a package to an existing Epoch of s if type matches and no checkpoint was found,
+     * creates a new epoch otherwise.
+     * @param s The sensor that recorded p
+     * @param p The package in question
+     * @param type The required EpochType
+     */
+    static void addToEpochs(Sensor s, Package p, Epoch.EpochType type) {
         var e = s.getLatestEpoch();
         if (e == null) {
             s.addEpoch(type, p);
@@ -102,7 +128,7 @@ public class Locator {
             s.addEpoch(type, p);
         } else {
             // If a checkpoint is found for a time before the timestamp add new epoch
-            //  set end position of previous epoch
+            // set end position of previous epoch
             for (var rdv : s.getCheckpoints()) {
                 if (rdv.getTimestamp() < p.getTimestamp()) {
                     e.endPosition = rdv;
@@ -116,6 +142,13 @@ public class Locator {
         }
     }
 
+    /**
+     * Estimate the position of packages within a epoch.
+     * @param s Sensor for which to do that
+     * @param i Index of the epoch
+     * @return Null if the superior function may continue execution, an empty List of packages if
+     * localization remains impossible and a List of packages if localization is complete
+     */
     private List<Package> calculateEpochPosition(Sensor s, int i) {
         float distance;
         Position startingPosition;
@@ -127,29 +160,35 @@ public class Locator {
             long lastId;
             Position lastEpochPosition;
 
+            var strongestFutureContact = topologyAnalyzer.getRelay(
+                    Epoch.getNeighbourRelay(epochs, i, false).getNodeId());
+
             try {
+                // Try to set last position using the last epoch
                 lastId = Epoch.getNeighbourRelay(epochs, i, true).getNodeId();
                 lastEpochPosition = epochs.get(i - 1).getLatest().getPosition();
             } catch (NoSuchElementException e) {
-                var nextRelay = Epoch.getNeighbourRelay(epochs, i, false);
 
                 if (s.getLastKnownPosition() != null) {
+                    // If the sensor had a last known position and use its relay
                     lastId = s.getLastKnownPosition().getDest().getId();
                     lastEpochPosition = s.getLastKnownPosition();
-                } else if (nextRelay != null) {
+                } else if (strongestFutureContact != null) {
+                    // If the next relay is known and no previous contacts are saved, set incomplete position
+                    // data since the origin will remain unknown no matter what
                     for (var pack : epoch.getPackages()) {
-                        pack.setPosition(new Position(null, topologyAnalyzer.getRelay(nextRelay.getNodeId()),
-                                Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY));
+                        pack.setPosition(new Position(null, topologyAnalyzer.getRelay(
+                                strongestFutureContact.getId()), Float.POSITIVE_INFINITY,
+                                Float.POSITIVE_INFINITY));
                     }
                     return null;
                 } else {
+                    // Data not sufficient, sensor has to have contacted at least one relay
                     return new LinkedList<>();
                 }
             }
 
             var strongestLastContact = topologyAnalyzer.getRelay(lastId);
-            var strongestFutureContact = topologyAnalyzer.getRelay(
-                    Epoch.getNeighbourRelay(epochs, i, false).getNodeId());
 
             var totalDistance =
                     topologyAnalyzer.getDistance(strongestLastContact.getId(), strongestFutureContact.getId());
@@ -165,6 +204,7 @@ public class Locator {
             startingPosition = new Position(strongestLastContact, strongestFutureContact,
                     lastEpochPosition.getPositionInBetween(), totalDistance);
         } else {
+            // Epoch with Relay contact
             var strongestContact = topologyAnalyzer.getRelay(epoch.getLatest().getStrongestRelay().getNodeId());
             distance = strongestContact.getRadius();
 
@@ -230,12 +270,17 @@ public class Locator {
             }
         }
 
-        epoch.setDistance(distance);
-        epoch.setPackagePositions(startingPosition);
+        epoch.setPackagePositions(distance, startingPosition);
         return null;
     }
 
-    List<Package> clearSensorEpochs(Sensor s) throws EpochException {
+    /**
+     * Sets the packages to determinable locations for a sensor and manages intra-sensor contacts on the way.
+     * Callable if a new relay peak or directional change occurred.
+     * @param s The sensor for which to do it
+     * @return Position-assigned packages from s
+     */
+    List<Package> clearSensorEpochs(Sensor s) {
         var epochs = s.getMysteryEpochs();
 
         // Merge start epoch with withdrawal if applicable
@@ -261,25 +306,15 @@ public class Locator {
             var result = calculateEpochPosition(s, i);
             if (result != null) return result;
 
-            var strongestContacts = new HashMap<Long, Package>();
-            for (var p : epoch.getPackages()) {
-                for (var wc : p.contacts) {
-                    if (Node.isSensor(wc.getNodeId())) {
-                        var strengthPrecedent = strongestContacts.get(wc.getNodeId());
-                        if (strengthPrecedent == null) {
-                            strongestContacts.put(wc.getNodeId(), p);
-                        } else if (strengthPrecedent.getContactToNode(wc.getNodeId()).getStrength()
-                                <= wc.getStrength()) {
-                            strongestContacts.put(wc.getNodeId(), p);
-                        }
-                    }
-                }
-            }
-
-            for (var k : strongestContacts.keySet()) {
+            // Check if epochs have to be split and calculations redone because of contact to other sensors.
+            for (var k : epoch.getStrongestContact().keySet()) {
                 var contactedSensor = sensors.get(k);
-                var strongPackage = strongestContacts.get(k);
-                if (strongPackage.getTimestamp() > epoch.getEndTime()) continue;
+                var strongPackage = epoch.getStrongestContact().get(k);
+
+                // Only interested in packages in this epoch
+                if (strongPackage.getTimestamp() > epoch.getEndTime()
+                        || strongPackage.getTimestamp() < epoch.getStartTime()) continue;
+
                 if (epoch.getType().equals(Epoch.EpochType.VOYAGE)) {
                     // Check for each contact if earliest possible confluence is greater than the calculated position
                     var lastRelayId = contactedSensor.getLastRelayContactId();
@@ -306,7 +341,9 @@ public class Locator {
                 }
 
                 // Do this once final positions are determined
-                contactedSensor.addRendezVous(new RendezVous(topologyAnalyzer.getGraphEdgePosition(strongPackage.getPosition()), contactedSensor, strongPackage.getTimestamp()));
+                contactedSensor.addRendezVous(
+                        new RendezVous(topologyAnalyzer.getGraphEdgePosition(strongPackage.getPosition()),
+                                contactedSensor, strongPackage.getTimestamp()));
             }
         }
 

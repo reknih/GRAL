@@ -1,11 +1,14 @@
 package de.haug.sensor_location;
 
-public class EpochException extends RuntimeException {
-    public EpochException() {
-        super();
-    }
-
-    public EpochException(String s) {
+/**
+ * Exceptions thrown by the Epoch class during its operations.
+ */
+class EpochException extends RuntimeException {
+    /**
+     * Constructs a new EpochException with a error message.
+     * @param s The error message
+     */
+    EpochException(String s) {
         super(s);
     }
 }

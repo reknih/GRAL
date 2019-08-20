@@ -390,4 +390,5 @@ class LocatorTest {
         assertEquals(ta.getRelay(1001), ta.getEarliestSharedNode(ta.getRelay(1001), ta.getRelay(1001), ta.getRelay(1002)));
     }
 
+    // TODO Test for determining first location by sensor contact
 }

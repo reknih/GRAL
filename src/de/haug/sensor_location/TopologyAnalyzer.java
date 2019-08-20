@@ -1,20 +1,34 @@
 package de.haug.sensor_location;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.NoSuchElementException;
+
 import org.jgrapht.*;
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.SimpleWeightedGraph;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NoSuchElementException;
-
+/**
+ * Class to reason about the graph topology
+ */
 public class TopologyAnalyzer {
-    private Graph<Node, DefaultWeightedEdge> g = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
-    private Map<Long, Relay> relays;
+    /**
+     * Graph object that represents the topology
+     */
+    @SuppressWarnings("WeakerAccess")
+    protected Graph<Node, DefaultWeightedEdge> g = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
+    /**
+     * Lookup map for relay ids
+     */
+    @SuppressWarnings("WeakerAccess")
+    protected Map<Long, Relay> relays;
 
-    public TopologyAnalyzer() throws Exception {
+    /**
+     * Constructor that adds sample topology
+     */
+    public TopologyAnalyzer() {
         relays = new HashMap<>();
 
         addRelay(1001);
@@ -37,14 +51,28 @@ public class TopologyAnalyzer {
         g.setEdgeWeight(getRelay(1002L), getRelay(1004L), 50);
     }
 
-    private void addRelay(long id) throws Exception {
+    /**
+     * Adds a relay to the graph
+     * @param id Id number of new relay
+     */
+    @SuppressWarnings("WeakerAccess")
+    protected void addRelay(long id) {
         relays.put(id, new Relay(id));
     }
 
-    public Relay getRelay(long id) {
+    /**
+     * @param id Relay id
+     * @return Relay object for id
+     */
+    Relay getRelay(long id) {
         return relays.get(id);
     }
 
+    /**
+     * @param startRelay Start of the path
+     * @param destRelay Destination of the path
+     * @return Path between startRelay and destRelay
+     */
     private GraphPath<Node, DefaultWeightedEdge> getShortestPath(Node startRelay, Node destRelay) {
         if (startRelay == null || destRelay == null) throw new NoSuchElementException("Ids not found");
 
@@ -54,11 +82,21 @@ public class TopologyAnalyzer {
         return path;
     }
 
-    public float getDistance(long srcId, long destId) {
+    /**
+     * @param srcId Start of the path
+     * @param destId Destination of the path
+     * @return Distance between srcId and destId on the shortest path
+     */
+    float getDistance(long srcId, long destId) {
         return (float)getShortestPath(getRelay(srcId), getRelay(destId)).getWeight();
     }
 
-    public Position getGraphEdgePosition(Position p) {
+    /**
+     * Converts a position object to have its start and end points equal an edge in the graph
+     * @param p Position to convert
+     * @return Position for which an edge exists such that it shares its start and destination nodes
+     */
+    Position getGraphEdgePosition(Position p) {
         var path = getShortestPath(p.getStart(), p.getDest());
 
         float leftWeight = p.getPositionInBetween();
@@ -76,7 +114,15 @@ public class TopologyAnalyzer {
         throw new RuntimeException("Path is shorter than length of position argument");
     }
 
-    public Position getTotalRoutePosition(Position edgePosition, Node start, Node end) {
+    /**
+     * Given a position that is equivalent to a graph edge,
+     * the method returns an equivalent position with specified start and end points
+     * @param edgePosition Position for which an edge exists such that it shares its start and destination nodes
+     * @param start Starting point of the new position
+     * @param end Destination of the new position
+     * @return Position equivalent to edgePosition with start as start and end as dest
+     */
+    Position getTotalRoutePosition(Position edgePosition, Node start, Node end) {
         var path = getShortestPath(start, end);
 
         var criticalEdge = g.getEdge(edgePosition.getStart(), edgePosition.getDest());
@@ -94,7 +140,13 @@ public class TopologyAnalyzer {
         return new Position(start, end, weight, (float)path.getWeight());
     }
 
-    public Node getEarliestSharedNode(Node start1, Node start2, Node dest) {
+    /**
+     * @param start1 First source node
+     * @param start2 Second source node
+     * @param dest Destination of the shared paths
+     * @return Earliest node that is on the path of both start1 and start2 to dest
+     */
+    Node getEarliestSharedNode(Node start1, Node start2, Node dest) {
         var path1 = getShortestPath(start1, dest);
         var path2 = getShortestPath(start2, dest);
 
@@ -110,7 +162,7 @@ public class TopologyAnalyzer {
             var longEdge = longerPathEdges.get(i);
             var shortEdge = shorterPathEdges.get(i - difference);
 
-            if (!g.getEdgeSource(longEdge).equals(g.getEdgeSource(shortEdge))) return  g.getEdgeTarget(longEdge);
+            if (!g.getEdgeSource(longEdge).equals(g.getEdgeSource(shortEdge))) return g.getEdgeTarget(longEdge);
         }
 
         return start1;

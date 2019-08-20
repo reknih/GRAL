@@ -3,24 +3,58 @@ package de.haug.sensor_location;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * Class for the sensors that will move and create packages
+ */
+@SuppressWarnings("WeakerAccess")
 public class Sensor extends Node {
-    public List<Epoch> mysteryEpochs;
-    public long lastEpochEnd = 0;
+    /**
+     * Epochs that cannot yet be assigned trajectories
+     */
+    List<Epoch> mysteryEpochs;
+
+    /**
+     * Timestamp of the last epoch end
+     */
+    long lastEpochEnd = 0;
+
+    /**
+     * Is the sensor new?
+     */
     private boolean pristine = true;
+
+    /**
+     * Last known position of the sensor
+     */
     private Position lastKnownPosition = null;
+
+    /**
+     * Checkpoints at which positions shall be set accordingly
+     */
     private List<RendezVous> checkpoints;
+
+    /**
+     * Las epoch purge time
+     */
     private long lastPurge = Long.MIN_VALUE;
 
-    public Sensor(long id) throws Exception {
+    /**
+     * Constructs a new instance
+     * @param id Unique sensor id in the id namespace
+     */
+    public Sensor(long id) {
         super(id);
         checkpoints = new LinkedList<>();
         mysteryEpochs = new LinkedList<>();
         if (!Node.isSensor(id)) {
-            throw new Exception("Id does not match Sensor status");
+            throw new RuntimeException("Id does not match Sensor status");
         }
     }
 
-    public Package getLastPackage() {
+    /**
+     * @return Return latest added Package or null if there is none
+     */
+    Package getLastPackage() {
         var latestEpoch = getLatestEpoch();
         if (latestEpoch == null) {
             return null;
@@ -32,18 +66,29 @@ public class Sensor extends Node {
         }
     }
 
-    public Epoch getLatestEpoch() {
+    /**
+     * @return Return latest epoch or null if there is none
+     */
+    Epoch getLatestEpoch() {
         if (mysteryEpochs.size() < 1) {
             return null;
         }
         return mysteryEpochs.get(mysteryEpochs.size() - 1);
     }
 
-    public List<Epoch> getMysteryEpochs() {
+    /**
+     * @return The epoch list
+     */
+    List<Epoch> getMysteryEpochs() {
         return mysteryEpochs;
     }
 
-    public void addEpoch(Epoch.EpochType t, Package p) throws EpochException {
+    /**
+     * Adds a new epoch of a given type and sets lastEpochEnd accordingly
+     * @param t The new Epoch's type
+     * @param p The new package
+     */
+    void addEpoch(Epoch.EpochType t, Package p) {
         if (mysteryEpochs.size() > 0) {
             this.lastEpochEnd = getLatestEpoch().getEndTime();
         }
@@ -55,7 +100,12 @@ public class Sensor extends Node {
         pristine = false;
     }
 
-    public List<Package> mergeAndClearEpochs(int count) {
+    /**
+     * Deletes a number of epochs and returns a list of their packages
+     * @param count Number of epochs to delete, starting with the most recent
+     * @return A list of the epoch's packages
+     */
+    List<Package> mergeAndClearEpochs(int count) {
         List<Package> result = new LinkedList<>();
         for (int i = count - 1; i >= 0; i--) {
             result.addAll(0, mysteryEpochs.get(i).getPackages());
@@ -67,17 +117,27 @@ public class Sensor extends Node {
         return result;
     }
 
+    /**
+     * @return The last known sensor position
+     */
     public Position getLastKnownPosition() {
         return lastKnownPosition;
     }
 
-    public void addRendezVous(RendezVous rendezVous) {
+    /**
+     * Adds a checkpoint to the sensor if fresh enough
+     * @param rendezVous The checkpoint candidate
+     */
+    void addRendezVous(RendezVous rendezVous) {
         if (rendezVous.getTimestamp() > lastPurge) {
             checkpoints.add(rendezVous);
         }
     }
 
-    public Long getLastRelayContactId() {
+    /**
+     * @return The last relay contact id number or null if there was no last relay
+     */
+    Long getLastRelayContactId() {
         for (int i = getMysteryEpochs().size() - 1; i >= 0; i--) {
             var e = getMysteryEpochs().get(i);
             var relayCandidate = e.getLatest().getStrongestRelay();
@@ -94,11 +154,17 @@ public class Sensor extends Node {
         return null;
     }
 
-    public List<RendezVous> getCheckpoints() {
+    /**
+     * @return A list of RendezVous as checkpoints
+     */
+    List<RendezVous> getCheckpoints() {
         return checkpoints;
     }
 
-    public void useCheckpoint(RendezVous checkpoint) {
+    /**
+     * @param checkpoint Checkpoint that is consumed by location
+     */
+    void useCheckpoint(RendezVous checkpoint) {
         checkpoints.remove(checkpoint);
     }
 }

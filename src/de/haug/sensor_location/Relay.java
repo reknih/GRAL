@@ -1,17 +1,28 @@
 package de.haug.sensor_location;
 
 public class Relay extends Node {
-    public Relay(long id) throws Exception {
+    /**
+     * Constructs a new relay node.
+      * @param id The id of the new relay node (has to stay clear of sensor ids)
+     */
+    @SuppressWarnings("WeakerAccess")
+    public Relay(long id) {
         super(id);
         if (Node.isSensor(id)) {
-            throw new Exception("Id does not match Relay status");
+            throw new RuntimeException("Id does not match Relay status");
         }
     }
 
-    public float getRadius() {
+    /**
+     * @return Wireless range radius of the relay
+     */
+    float getRadius() {
         return 10;
     }
 
+    /**
+     * @return Human-readable description
+     */
     @Override
     public String toString() {
         return String.format("relay %d", id);

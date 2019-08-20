@@ -4,23 +4,59 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
 
+/**
+ * A package containing sensor measurements
+ */
 public class Package {
+    /**
+     * The id of the sensor that has created the package
+     */
     private final long sensorId;
+
+    /**
+     * The time of creation of the package
+     */
     private final long timestamp;
+
+    /**
+     * The other wireless devices encountered at that moment
+     */
     Set<WirelessContact> contacts;
+
+    /**
+     * Where this package has been measured
+     */
     Position position = null;
 
+    /**
+     * Creates a new package with a sensorId and a timestamp
+     * @param sensorId The sensor which has registered the package
+     * @param timestamp The time at which the package has been created
+     */
     public Package(long sensorId, long timestamp) {
         this.sensorId = sensorId;
         this.timestamp = timestamp;
         contacts = new HashSet<>();
     }
 
+    /**
+     * Creates a new package with a sensorId, a timestamp and a list of encountered devices
+     * @param sensorId The sensor which has registered the package
+     * @param timestamp The time at which the package has been created
+     * @param contacts Encountered devices
+     */
+    @SuppressWarnings("unused")
     public Package(long sensorId, long timestamp, Set<WirelessContact> contacts) {
         this(sensorId, timestamp);
         this.contacts = contacts == null ? this.contacts : contacts;
     }
 
+    /**
+     * Creates a new package with a sensorId, a timestamp and a single encountered device
+     * @param sensorId The sensor which has registered the package
+     * @param timestamp The time at which the package has been created
+     * @param contact Encountered device
+     */
     public Package(long sensorId, long timestamp, WirelessContact contact) {
         this(sensorId, timestamp);
         if (contact != null) {
@@ -28,27 +64,43 @@ public class Package {
         }
     }
 
+    /**
+     * @return The position at which the package was measured
+     */
+    @SuppressWarnings("WeakerAccess")
     public Position getPosition() {
         return position;
     }
 
+    /**
+     * @return The id of the sensor that created this package
+     */
+    @SuppressWarnings("WeakerAccess")
     public long getSensorId() {
         return sensorId;
     }
 
-    public void setPosition(Position position) {
+    /**
+     * Setter for the position.
+     * @param position Position at which this package was registered
+     */
+    void setPosition(Position position) {
         this.position = position;
     }
 
+    /**
+     * @return The time at which this package was registered
+     */
+    @SuppressWarnings("WeakerAccess")
     public long getTimestamp() {
         return timestamp;
     }
 
-    /** Finds a WirelessContact object of the package for a specified id
+    /** Finds a WirelessContact object of the package for a specified id.
      * @param id The node id to look for
      * @return The WirelessContact from contacts if found or null otherwise
      */
-    public WirelessContact getContactToNode(long id) {
+    WirelessContact getContactToNode(long id) {
         for (var c : contacts) {
             if (c.getNodeId() == id) {
                 return c;
@@ -58,31 +110,12 @@ public class Package {
         return null;
     }
 
-    public WirelessContact getStrongestRelay() {
+    /**
+     * @return The strongest relay contact in the package
+     */
+    WirelessContact getStrongestRelay() {
         LinkedList<WirelessContact> detectedRelays = new LinkedList<>(this.contacts);
         detectedRelays.removeIf(c -> Node.isSensor(c.getNodeId()));
         return WirelessContact.getStrongestSignal(detectedRelays);
-    }
-
-    public class PackageFactory {
-        private Package result;
-
-        public PackageFactory(long id, long timestamp) {
-            result = new Package(id, timestamp);
-        }
-
-        public PackageFactory addContact(WirelessContact wirelessContact) {
-            result.contacts.add(wirelessContact);
-            return this;
-        }
-
-        public PackageFactory setPosition(Position p) {
-            result.setPosition(p);
-            return this;
-        }
-
-        public Package create() {
-            return result;
-        }
     }
 }
