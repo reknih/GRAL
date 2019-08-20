@@ -73,14 +73,12 @@ public class Position {
     @Override
     public String toString() {
         if (dest == null) {
-            if (positionInBetween == 0) return "Exactly at " + start.toString();
             if (start == null) return "My life is a mystery.";
+            if (positionInBetween == 0) return "Exactly at " + start.toString();
         } else if (start == null) {
             if (positionInBetween == 0) return "Exactly at " + dest.toString();
         }
 
-        assert start != null;
-        assert dest != null;
         return String.format("Travelled %f of %f units from %s to %s", positionInBetween, totalDistance,
                 start.toString(), dest.toString());
     }

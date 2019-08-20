@@ -1,8 +1,5 @@
 package de.haug.sensor_location;
 
-import java.util.List;
-import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class LocatorTest {
@@ -383,12 +380,43 @@ class LocatorTest {
     }
 
     @org.junit.jupiter.api.Test
+    void feedUnknownStartRendezVousTest() throws Exception {
+        var locator = new Locator();
+
+        locator.feed(new Package(2, 1, wirelessContact3_2));
+        locator.feed(new Package(2, 2, wirelessContact3_2));
+        locator.feed(new Package(2, 3, wirelessContact3_2));
+        locator.feed(new Package(2, 4));
+        locator.feed(new Package(2, 5, wirelessContactS3_0));
+        locator.feed(new Package(2, 6, wirelessContactS3_1));
+        locator.feed(new Package(2, 7, wirelessContactS3_0));
+        locator.feed(new Package(2, 9));
+        var resultS2 = locator.feed(new Package(2, 10, wirelessContact2_2));
+
+        assertEquals(0, locator.feed(new Package(3, 4)).size());
+        assertEquals(0, locator.feed(new Package(3, 5, wirelessContactS2_0)).size());
+        assertEquals(0, locator.feed(new Package(3, 6, wirelessContactS2_1)).size());
+        assertEquals(0, locator.feed(new Package(3, 7, wirelessContactS2_0)).size());
+        assertEquals(0, locator.feed(new Package(3, 9)).size());
+        assertEquals(0, locator.feed(new Package(3, 12, wirelessContact2_2)).size());
+        assertEquals(0, locator.feed(new Package(3, 20)).size());
+        assertEquals(0, locator.feed(new Package(3, 24)).size());
+
+        var resultS3 = locator.feed(new Package(3, 28, wirelessContact4_2));
+        assertEquals(9, resultS3.size());
+        assertNull(resultS3.get(0).getPosition().getStart());
+        assertEquals(1003, resultS3.get(3).getPosition().getStart().getId());
+        assertEquals(1002, resultS3.get(0).getPosition().getDest().getId());
+        assertEquals(1002, resultS3.get(3).getPosition().getDest().getId());
+        assertEquals(Float.POSITIVE_INFINITY, resultS3.get(0).getPosition().getPositionInBetween());
+        assertEquals(Float.POSITIVE_INFINITY, resultS3.get(0).getPosition().getTotalDistance());
+    }
+
+    @org.junit.jupiter.api.Test
     void getEarliestSharedNodeTest() throws Exception {
         var ta = new TopologyAnalyzer();
 
         assertEquals(ta.getRelay(1002), ta.getEarliestSharedNode(ta.getRelay(1001), ta.getRelay(1003), ta.getRelay(1002)));
         assertEquals(ta.getRelay(1001), ta.getEarliestSharedNode(ta.getRelay(1001), ta.getRelay(1001), ta.getRelay(1002)));
     }
-
-    // TODO Test for determining first location by sensor contact
 }
