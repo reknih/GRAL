@@ -366,12 +366,12 @@ class LocatorTest {
         assertEquals(9, resultS3.size());// 120
         assertNull(resultS3.get(0).getPosition().getStart());
         assertEquals(1003, resultS3.get(0).getPosition().getDest().getId());
-        assertEquals(Float.POSITIVE_INFINITY, resultS3.get(0).getPosition().getPositionInBetween());
+        assertEquals(0, resultS3.get(0).getPosition().getPositionInBetween());
         assertEquals(Float.POSITIVE_INFINITY, resultS3.get(0).getPosition().getTotalDistance());
 
         assertNull(resultS3.get(1).getPosition().getStart());
         assertEquals(1003, resultS3.get(1).getPosition().getDest().getId());
-        assertEquals(Float.POSITIVE_INFINITY, resultS3.get(1).getPosition().getPositionInBetween());
+        assertEquals(0, resultS3.get(1).getPosition().getPositionInBetween());
         assertEquals(Float.POSITIVE_INFINITY, resultS3.get(1).getPosition().getTotalDistance());
 
         assertEquals(1003, resultS3.get(2).getPosition().getStart().getId());
@@ -408,7 +408,7 @@ class LocatorTest {
         assertEquals(1003, resultS3.get(3).getPosition().getStart().getId());
         assertEquals(1002, resultS3.get(0).getPosition().getDest().getId());
         assertEquals(1002, resultS3.get(3).getPosition().getDest().getId());
-        assertEquals(Float.POSITIVE_INFINITY, resultS3.get(0).getPosition().getPositionInBetween());
+        assertEquals(0, resultS3.get(0).getPosition().getPositionInBetween());
         assertEquals(Float.POSITIVE_INFINITY, resultS3.get(0).getPosition().getTotalDistance());
     }
 

@@ -135,12 +135,16 @@ public class Sensor extends Node {
     }
 
     /**
+     * @param timestampBound Method returns null if the contact is newer than timestampBound
      * @return The last relay contact id number or null if there was no last relay
      */
-    Long getLastRelayContactId() {
+    Long getLastRelayContactId(long timestampBound) {
         for (int i = getMysteryEpochs().size() - 1; i >= 0; i--) {
             var e = getMysteryEpochs().get(i);
-            var relayCandidate = e.getLatest().getStrongestRelay();
+            var latestPackage = e.getLatest();
+            if (latestPackage.getTimestamp() > timestampBound) return null;
+
+            var relayCandidate = latestPackage.getStrongestRelay();
             if (relayCandidate != null) {
                 return relayCandidate.getNodeId();
             }
@@ -152,6 +156,10 @@ public class Sensor extends Node {
         }
 
         return null;
+    }
+
+    Long getLastRelayContactId() {
+        return getLastRelayContactId(Long.MAX_VALUE);
     }
 
     /**

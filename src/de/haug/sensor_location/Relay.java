@@ -17,7 +17,8 @@ public class Relay extends Node {
      * @return Wireless range radius of the relay
      */
     float getRadius() {
-        return 10;
+        return (float) Math.sqrt(10);
+        //return 10;
     }
 
     /**

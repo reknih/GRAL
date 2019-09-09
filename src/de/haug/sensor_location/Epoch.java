@@ -190,6 +190,10 @@ class Epoch {
                             * getAverageSpeed()),
                     startingPosition.getTotalDistance()));
         }
+
+        if (endPosition == null) {
+            endPosition = this.getLatest().position;
+        }
     }
 
     /**
@@ -264,7 +268,7 @@ class Epoch {
      * @return The next relay-contacting Epoch from epochs
      * @throws NoSuchElementException Thrown if index at border of list or no match found
      */
-    private static Epoch getLastNonVoyageEpoch(List<Epoch> epochs, int index, boolean backwards)
+    static Epoch getLastNonVoyageEpoch(List<Epoch> epochs, int index, boolean backwards)
             throws NoSuchElementException {
         if ((index < 1 && backwards) || (index > epochs.size() - 2 && !backwards))
             throw new NoSuchElementException("Index at border of list");
