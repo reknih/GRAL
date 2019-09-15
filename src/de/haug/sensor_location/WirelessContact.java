@@ -77,4 +77,10 @@ public class WirelessContact {
     Direction getDirection() {
         return direction;
     }
+
+    @Override
+    public String toString() {
+        return "Contact to " + String.valueOf(nodeId) + String.format(" (strength %.2f)", strength)
+                + " of type " + direction.name();
+    }
 }

@@ -94,18 +94,20 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void addToEpochs() throws EpochException {
+        var l = new Locator();
         var p = new Package(1, 1);
-        Locator.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
+        l.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
         assertTrue(sensor1.mysteryEpochs.size() == 1);
         assertTrue(sensor1.mysteryEpochs.get(0).getLatest().equals(p));
     }
 
     @org.junit.jupiter.api.Test
     void addToExistingEpoch() throws EpochException {
+        var l = new Locator();
         var p = new Package(1, 1);
         var p2 = new Package(1, 2);
-        Locator.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
-        Locator.addToEpochs(sensor1, p2, Epoch.EpochType.RELAY_APPROACH);
+        l.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
+        l.addToEpochs(sensor1, p2, Epoch.EpochType.RELAY_APPROACH);
         assertTrue(sensor1.mysteryEpochs.size() == 1);
         assertTrue(sensor1.mysteryEpochs.get(0).getPackages().size() == 2);
         assertTrue(sensor1.mysteryEpochs.get(0).getLatest().equals(p2));
@@ -117,7 +119,7 @@ class LocatorTest {
         locator.sensors.put(2L, sensor1);
         p1.setPosition(new Position(r1, null, 0, 0));
 
-        Locator.addToEpochs(sensor1, p1, Epoch.EpochType.RELAY_APPROACH);
+        locator.addToEpochs(sensor1, p1, Epoch.EpochType.RELAY_APPROACH);
         var result = locator.clearSensorEpochs(sensor1);
         assertEquals(0, result.size());
         assertEquals(1, sensor1.mysteryEpochs.size());

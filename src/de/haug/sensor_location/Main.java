@@ -1,10 +1,12 @@
 package de.haug.sensor_location;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
@@ -26,12 +28,23 @@ public class Main {
                 if (!obj.getString("sensor").equals("beacon")) return;
 
                 var contacts = obj.getJSONArray("value");
+                var sid = 1L;
+                try {
+                    sid = obj.getLong("id");
+                } catch (JSONException e) {
+                    // Var stays with its initial value
+                }
+
                 Package p;
                 if (contacts.length() >= 2) {
-                    var contact = new WirelessContact(contacts.getLong(0), contacts.getFloat(1));
-                    p = new Package(1, obj.getLong("time"), contact);
+                    var contactSet = new HashSet<WirelessContact>();
+                    for (int i = 0; i < contacts.length(); i += 2) {
+                        contactSet.add(new WirelessContact(contacts.getLong(i), contacts.getFloat(i + 1)));
+                    }
+
+                    p = new Package(sid, obj.getLong("time"), contactSet);
                 } else {
-                    p = new Package(1, obj.getLong("time"));
+                    p = new Package(sid, obj.getLong("time"));
                 }
 
 
@@ -39,8 +52,11 @@ public class Main {
                 List<Package> result = l.feed(p);
 
                 for (var r : result) {
-                    System.out.printf(Locale.US, "{\"estimated_position\": %f, \"timestamp\": %d}\n",
-                            r.getPosition().getPositionInBetween(), r.getTimestamp());
+                    System.out.printf(Locale.US, "{\"estimated_position\": %f, \"id\": %d, \"timestamp\": %d}\n",
+                            l.topologyAnalyzer.getTotalRoutePosition(r.getPosition(),
+                                    l.topologyAnalyzer.getRelay(args.length >= 2 && sid % 2 != 0 ? 1004 : 1001),
+                                    l.topologyAnalyzer.getRelay(1003)).getPositionInBetween(),
+                            sid, r.getTimestamp());
                 }
             });
         } catch (IOException e) {

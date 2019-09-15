@@ -13,6 +13,7 @@ class Epoch {
     private EpochType type;
     private float distance;
     private Long startTime;
+    private WirelessContact relayContact;
     private Map<Long, Package> strongestContact;
 
     /**
@@ -79,6 +80,11 @@ class Epoch {
      */
     void addPackage(Package p) {
         packages.add(p);
+
+        setStrongestContact(p);
+    }
+
+    void setStrongestContact(Package p) {
         LinkedList<WirelessContact> detectedSensors = new LinkedList<>(p.contacts);
         detectedSensors.removeIf(c -> !Node.isSensor(c.getNodeId()));
 
@@ -88,6 +94,13 @@ class Epoch {
                     || strongestContact.get(id).getContactToNode(id).getStrength() <= wc.getStrength()) {
                 strongestContact.put(id, p);
             }
+        }
+    }
+
+    void renewStrongestContactInfo () {
+        strongestContact.clear();
+        for (var p : packages) {
+            setStrongestContact(p);
         }
     }
 
@@ -134,6 +147,15 @@ class Epoch {
         }
 
         return packages.get(0).getTimestamp();
+    }
+
+    boolean hasContactToNode(Node n) {
+        for (var p : packages) {
+            if (p.getContactToNode(n.id) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -206,17 +228,22 @@ class Epoch {
      */
     Epoch split(Package splitPackage, Position endPosition) {
         var splitIndex = packages.indexOf(splitPackage);
-        this.endPosition = endPosition;
+
         // Return nothing if this was the last package
         if (splitIndex >= packages.size()) return null;
 
         var subList = packages.subList(splitIndex + 1, packages.size());
 
-        var returnEpoch = new Epoch(getType());
-        returnEpoch.startTime = splitPackage.getTimestamp();
-        returnEpoch.packages.addAll(subList);
+        Epoch returnEpoch = null;
+        if (subList.size() > 0) {
+            this.endPosition = endPosition;
+            returnEpoch = new Epoch(getType());
+            returnEpoch.startTime = splitPackage.getTimestamp();
+            returnEpoch.packages.addAll(subList);
 
-        subList.clear();
+            subList.clear();
+            renewStrongestContactInfo();
+        }
 
         return returnEpoch;
     }
@@ -245,6 +272,20 @@ class Epoch {
         this.type = type;
     }
 
+    void setRelayContact(WirelessContact r) {
+        this.relayContact = r;
+    }
+
+    WirelessContact getRelayContact() {
+        return getLatest().getStrongestRelay() == null ?
+                relayContact : getLatest().getStrongestRelay();
+    }
+
+    @Override
+    public String toString() {
+        return type.name() + " epoch with " + String.valueOf(packages.size()) + " packages";
+    }
+
     /**
      * Returns the next relay contact from a adjacent epoch.
      * @param epochs The epoch list in which to look
@@ -256,8 +297,7 @@ class Epoch {
     static WirelessContact getNeighbourRelay(List<Epoch> epochs, int index, boolean backwards)
             throws NoSuchElementException {
         return getLastNonVoyageEpoch(epochs, index, backwards)
-                .getLatest()
-                .getStrongestRelay();
+                .getRelayContact();
     }
 
     /**
@@ -273,8 +313,17 @@ class Epoch {
         if ((index < 1 && backwards) || (index > epochs.size() - 2 && !backwards))
             throw new NoSuchElementException("Index at border of list");
 
+        var skip = true;
         for (int i = backwards ? index - 1 : index + 1; i < epochs.size() && i >= 0; i = backwards ? i - 1 : i + 1) {
             var epoch = epochs.get(i);
+            if (skip && (backwards ? i + 1 : i - 1) < epochs.size() && (backwards ? i + 1 : i - 1) > 0) {
+                var nextEpoch = epochs.get(backwards ? i + 1 : i - 1);
+                if (nextEpoch.getType().equals(epoch.getType())) {
+                    if (nextEpoch.type.equals(EpochType.VOYAGE)) continue;
+                    if (nextEpoch.getRelayContact().getNodeId() == epoch.getRelayContact().getNodeId()) continue;
+                }
+            }
+            skip = false;
             if (!epoch.getType().equals(EpochType.VOYAGE)) {
                 return epoch;
             }

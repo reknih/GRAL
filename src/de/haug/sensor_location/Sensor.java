@@ -134,6 +134,33 @@ public class Sensor extends Node {
         }
     }
 
+    RendezVous getCheckpoint(long start, long end) {
+        RendezVous mostRecent = null;
+        LinkedList<RendezVous> junk = new LinkedList<>();
+
+        for (var rdv : checkpoints) {
+            if (end > rdv.getTimestamp()) {
+                if (start < rdv.getTimestamp()) {
+                    if (mostRecent == null) {
+                        mostRecent = rdv;
+                    } else if (mostRecent.getTimestamp() > rdv.getTimestamp()) {
+                        junk.add(rdv);
+                    } else {
+                        junk.add(mostRecent);
+                        mostRecent = rdv;
+                    }
+                } else {
+                    junk.add(rdv);
+                }
+            }
+        }
+
+        checkpoints.removeAll(junk);
+        checkpoints.remove(mostRecent);
+
+        return mostRecent;
+    }
+
     /**
      * @param timestampBound Method returns null if the contact is newer than timestampBound
      * @return The last relay contact id number or null if there was no last relay
