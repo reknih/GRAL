@@ -134,6 +134,12 @@ public class Sensor extends Node {
         }
     }
 
+    /**
+     * Returns a checkpoint that matches a timestamp and removes stale rendez-vous from the sensor
+     * @param start Exclusive lower timestamp boundary for the checkpoint
+     * @param end Exclusive upper timestamp boundary for the checkpoint
+     * @return A checkpoint if one is present and matches the parameters or null
+     */
     RendezVous getCheckpoint(long start, long end) {
         RendezVous mostRecent = null;
         LinkedList<RendezVous> junk = new LinkedList<>();
@@ -185,6 +191,9 @@ public class Sensor extends Node {
         return null;
     }
 
+    /**
+     * @return The last relay contact id number or null if there was no last relay
+     */
     Long getLastRelayContactId() {
         return getLastRelayContactId(Long.MAX_VALUE);
     }

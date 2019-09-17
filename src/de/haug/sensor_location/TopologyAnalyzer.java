@@ -42,13 +42,17 @@ public class TopologyAnalyzer {
         g.addVertex(getRelay(1004L));
 
         g.addEdge(getRelay(1001L), getRelay(1002L));
-        g.setEdgeWeight(getRelay(1001L), getRelay(1002L), 100);
+        g.setEdgeWeight(getRelay(1001L), getRelay(1002L), 50);
+        g.addEdge(getRelay(1004L), getRelay(1002L));
+        g.setEdgeWeight(getRelay(1004L), getRelay(1002L), 50);
+        g.addEdge(getRelay(1002L), getRelay(1003L));
+        g.setEdgeWeight(getRelay(1002L), getRelay(1003L), 50);
 
-        g.addEdge(getRelay(1003L), getRelay(1002L));
-        g.setEdgeWeight(getRelay(1003L), getRelay(1002L), 70);
+        //g.addEdge(getRelay(1003L), getRelay(1002L));
+        //g.setEdgeWeight(getRelay(1003L), getRelay(1002L), 70);
 
-        g.addEdge(getRelay(1002L), getRelay(1004L));
-        g.setEdgeWeight(getRelay(1002L), getRelay(1004L), 50);
+        //g.addEdge(getRelay(1002L), getRelay(1004L));
+        //g.setEdgeWeight(getRelay(1002L), getRelay(1004L), 50);
     }
 
     /**
@@ -97,6 +101,8 @@ public class TopologyAnalyzer {
      * @return Position for which an edge exists such that it shares its start and destination nodes
      */
     Position getGraphEdgePosition(Position p) {
+        if (p.getStart().equals(p.getDest())) return p;
+
         var path = getShortestPath(p.getStart(), p.getDest());
 
         float leftWeight = p.getPositionInBetween();
@@ -123,11 +129,58 @@ public class TopologyAnalyzer {
      * @return Position equivalent to edgePosition with start as start and end as dest
      */
     Position getTotalRoutePosition(Position edgePosition, Node start, Node end) {
+
         var path = getShortestPath(start, end);
 
         var criticalEdge = g.getEdge(edgePosition.getStart(), edgePosition.getDest());
-        if (criticalEdge == null)
+        if (criticalEdge == null) {
+            if (edgePosition.getStart().equals(edgePosition.getDest())) {
+                if (edgePosition.getDest().equals(end)) {
+                    var totalDistance = getDistance(start.getId(), end.getId());
+                    return new Position(start, end, totalDistance, totalDistance);
+                }
+                if (edgePosition.getStart().equals(start)) {
+                    var totalDistance = getDistance(start.getId(), end.getId());
+                    return new Position(start, end, 0, totalDistance);
+                }
+            }
+
+            try {
+                var edgePosPath = getShortestPath(edgePosition.getStart(), edgePosition.getDest());
+                if (path.getEdgeList().containsAll(edgePosPath.getEdgeList())) {
+                    var weight = 0f;
+                    for (var refEdge : path.getEdgeList()) {
+                        if (edgePosPath.getEdgeList().contains(refEdge)) break;
+                    }
+                    weight += edgePosition.getPositionInBetween();
+                    return new Position(start, end, weight, (float)path.getWeight());
+                }
+
+            } catch (RuntimeException e) {
+                // No path between edgePosition.getStart() and edgePosition.getDest()
+                throw e;
+            }
+
             throw new RuntimeException("No edge between start and end vertex");
+        }
+
+        if (!path.getEdgeList().contains(criticalEdge)) {
+            if (edgePosition.getPositionInBetween() == edgePosition.getTotalDistance()) {
+                for(var v : path.getVertexList()) {
+                    if (edgePosition.getDest().equals(v)) {
+                        return new Position(start, end, getDistance(start.getId(), v.getId()), (float)path.getWeight());
+                    }
+                }
+
+
+            } else if (edgePosition.getPositionInBetween() == 0 && edgePosition.getStart().equals(end)) {
+                var length = (float)path.getWeight();
+                return new Position(start, end, length, length);
+            }
+
+            throw new RuntimeException("Position edge not in path");
+        }
+
         var weight = edgePosition.getPositionInBetween();
 
         for(var e : path.getEdgeList()) {
@@ -166,5 +219,28 @@ public class TopologyAnalyzer {
         }
 
         return start1;
+    }
+
+    /**
+     * @param start First vertex of the edge in question
+     * @param dest Second vertex of the edge in question
+     * @param pos Position interpreted as a path
+     * @return Whether the path that the position pos describes contains the edge between start and dest
+     */
+    boolean contains(Node start, Node dest, Position pos) {
+        if (start == null || dest == null || pos == null) return false;
+        if (pos.getStart() == null || pos.getDest() == null) return false;
+
+        var route = getShortestPath(pos.getStart(), pos.getDest());
+        if (pos.getStart() == pos.getDest() && route.getVertexList().contains(pos.getStart())) return true;
+
+        var edge = g.getEdge(start, dest);
+        if (edge == null) return false;
+
+        for (var e : route.getEdgeList()) {
+            if (e.equals(edge)) return true;
+        }
+
+        return false;
     }
 }

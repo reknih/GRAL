@@ -84,6 +84,10 @@ class Epoch {
         setStrongestContact(p);
     }
 
+    /**
+     * Changes the strongestContact property if package p mandates it
+     * @param p The new package
+     */
     void setStrongestContact(Package p) {
         LinkedList<WirelessContact> detectedSensors = new LinkedList<>(p.contacts);
         detectedSensors.removeIf(c -> !Node.isSensor(c.getNodeId()));
@@ -97,6 +101,11 @@ class Epoch {
         }
     }
 
+
+    /**
+     * Sets the new strongest package.
+     * Call after packages have been removed from the epoch
+     */
     void renewStrongestContactInfo () {
         strongestContact.clear();
         for (var p : packages) {
@@ -149,6 +158,11 @@ class Epoch {
         return packages.get(0).getTimestamp();
     }
 
+    /**
+     * Tells whether a certain node has been encountered during the epoch
+     * @param n Which node to look for
+     * @return Whether the node had contact to the node specified in the arguments
+     */
     boolean hasContactToNode(Node n) {
         for (var p : packages) {
             if (p.getContactToNode(n.id) != null) {
@@ -272,10 +286,17 @@ class Epoch {
         this.type = type;
     }
 
+    /**
+     * Setter for the relay contact in this epoch. Use if this epoch was result of merge with another one
+     * @param r A contact to the strongest relay in this epoch
+     */
     void setRelayContact(WirelessContact r) {
         this.relayContact = r;
     }
 
+    /**
+     * @return A contact to the strongest relay in this epoch
+     */
     WirelessContact getRelayContact() {
         return getLatest().getStrongestRelay() == null ?
                 relayContact : getLatest().getStrongestRelay();

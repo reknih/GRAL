@@ -260,17 +260,24 @@ public class Locator {
         return type;
     }
 
-    private List<Package> calculateEpochPosition(Sensor s, int i) {
+    /**
+     * Estimate the position of packages within a epoch.
+     * @param s Sensor for which to do that
+     * @param i Index of the epoch
+     * @return Null if the superior function may continue execution, an empty List of packages if
+     * localization remains impossible and a List of packages if localization is complete
+     */    private List<Package> calculateEpochPosition(Sensor s, int i) {
         return calculateEpochPosition(s, i, false);
     }
 
-        /**
-         * Estimate the position of packages within a epoch.
-         * @param s Sensor for which to do that
-         * @param i Index of the epoch
-         * @return Null if the superior function may continue execution, an empty List of packages if
-         * localization remains impossible and a List of packages if localization is complete
-         */
+    /**
+     * Estimate the position of packages within a epoch.
+     * @param s Sensor for which to do that
+     * @param i Index of the epoch
+     * @param recursed Indicates whether the function was called by itself
+     * @return Null if the superior function may continue execution, an empty List of packages if
+     * localization remains impossible and a List of packages if localization is complete
+     */
     private List<Package> calculateEpochPosition(Sensor s, int i, boolean recursed) {
         float distance;
         Position startingPosition;
@@ -403,20 +410,19 @@ public class Locator {
                             strongestContact.getId());
                     startingPosition = new Position(prevRelay, strongestContact,
                             totalDistance - strongestContact.getRadius(), totalDistance);
-                } else {
+                } else if (nextRelay != null) {
                     // Can not determine last node, fallback for first iteration
                     //  If the previous package position is unknown, set it to new Position(null, node, INF, INF)
                     //  If it is known then process normally
-                    if (nextRelay != null) {
-                        var position = new Position(strongestContact, nextRelay, 0,
-                                topologyAnalyzer.getDistance(strongestContact.getId(), nextRelay.getId()));
-                        epoch.endPosition = position;
-                        for (var pack : epoch.getPackages()) {
-                            pack.setPosition(position);
-                        }
-                        return null;
-                    }
 
+                    var position = new Position(strongestContact, nextRelay, 0,
+                            topologyAnalyzer.getDistance(strongestContact.getId(), nextRelay.getId()));
+                    epoch.endPosition = position;
+                    for (var pack : epoch.getPackages()) {
+                        pack.setPosition(position);
+                    }
+                    return null;
+                } else {
                     return new LinkedList<>();
                 }
             } else {
@@ -456,7 +462,12 @@ public class Locator {
         return null;
     }
 
-    List<Package> clearSensorEpochs(Sensor s) {
+    /**
+     * Sets the packages to determinable locations for a sensor and manages intra-sensor contacts on the way.
+     * Callable if a new relay peak or directional change occurred.
+     * @param s The sensor for which to do it
+     * @return Position-assigned packages from s
+     */    List<Package> clearSensorEpochs(Sensor s) {
         return clearSensorEpochs(s, Integer.MAX_VALUE);
     }
 
@@ -464,6 +475,7 @@ public class Locator {
      * Sets the packages to determinable locations for a sensor and manages intra-sensor contacts on the way.
      * Callable if a new relay peak or directional change occurred.
      * @param s The sensor for which to do it
+     * @param maxIndex Exclusive upper boundary for the epochs to be processed
      * @return Position-assigned packages from s
      */
     List<Package> clearSensorEpochs(Sensor s, int maxIndex) {
@@ -517,7 +529,11 @@ public class Locator {
                                     new Position(strongPackage.position.getStart(),
                                     strongPackage.position.getDest(), minDistance,
                                     strongPackage.position.getTotalDistance())));
-                            if (newEpoch != null) s.mysteryEpochs.add(i + 1, newEpoch);
+                            System.err.println("Did rectification!");
+                            if (newEpoch != null) {
+                                s.mysteryEpochs.add(i + 1, newEpoch);
+                                maxIndex++;
+                            }
 
                             calculateEpochPosition(s, i);
                         }
