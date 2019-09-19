@@ -1,5 +1,6 @@
 package de.haug.gral;
 
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LocatorTest {
@@ -94,8 +95,8 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void addToEpochs() throws EpochException {
-        var l = new Locator();
-        var p = new Package(1, 1);
+        Locator l = new Locator();
+        Package p = new Package(1, 1);
         l.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
         assertTrue(sensor1.mysteryEpochs.size() == 1);
         assertTrue(sensor1.mysteryEpochs.get(0).getLatest().equals(p));
@@ -103,9 +104,9 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void addToExistingEpoch() throws EpochException {
-        var l = new Locator();
-        var p = new Package(1, 1);
-        var p2 = new Package(1, 2);
+        Locator l = new Locator();
+        Package p = new Package(1, 1);
+        Package p2 = new Package(1, 2);
         l.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
         l.addToEpochs(sensor1, p2, Epoch.EpochType.RELAY_APPROACH);
         assertTrue(sensor1.mysteryEpochs.size() == 1);
@@ -115,19 +116,19 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void clearSensorEpochsPlain() throws Exception {
-        var locator = new Locator();
+        Locator locator = new Locator();
         locator.sensors.put(2L, sensor1);
         p1.setPosition(new Position(r1, null, 0, 0));
 
         locator.addToEpochs(sensor1, p1, Epoch.EpochType.RELAY_APPROACH);
-        var result = locator.clearSensorEpochs(sensor1);
+        List<Package> result = locator.clearSensorEpochs(sensor1);
         assertEquals(0, result.size());
         assertEquals(1, sensor1.mysteryEpochs.size());
     }
 
     @org.junit.jupiter.api.Test
     void feedIntegrationTest() throws Exception {
-        var locator = new Locator();
+        Locator locator = new Locator();
         assertEquals(0, locator.feed(p1).size());
         assertEquals(1, locator.sensors.size());
         assertEquals(1, locator.sensors.get(2L).mysteryEpochs.size());
@@ -147,7 +148,7 @@ class LocatorTest {
         assertEquals(3, locator.sensors.get(2L).mysteryEpochs.size());
         assertEquals(locator.sensors.get(2L).mysteryEpochs.get(2).getType(), Epoch.EpochType.RELAY_APPROACH);
         assertEquals(0, locator.feed(p8).size());
-        var result = locator.feed(p9);
+        List<Package> result = locator.feed(p9);
         assertEquals(9, result.size());
         assertEquals(0, locator.sensors.get(2L).mysteryEpochs.size());
         assertEquals(p9.getTimestamp(), locator.sensors.get(2L).lastEpochEnd);
@@ -162,7 +163,7 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void feedIntegrationTest2() throws Exception {
-        var locator = new Locator();
+        Locator locator = new Locator();
         assertEquals(0, locator.feed(p1).size());
         assertEquals(0, locator.feed(p2).size());
         assertEquals(0, locator.feed(p3).size());
@@ -171,7 +172,7 @@ class LocatorTest {
         assertEquals(0, locator.feed(p6).size());
         assertEquals(0, locator.feed(p10).size());
         assertEquals(0, locator.feed(p11).size());
-        var result = locator.feed(p12);
+        List<Package> result = locator.feed(p12);
         assertEquals(9, result.size());
         assertEquals(0, locator.sensors.get(2L).mysteryEpochs.size());
 
@@ -184,7 +185,7 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void feedTwoRelayTest() throws Exception {
-        var locator = new Locator();
+        Locator locator = new Locator();
         assertEquals(0, locator.feed(p1).size());
         assertEquals(0, locator.feed(p2).size());
         assertEquals(0, locator.feed(p3).size());
@@ -193,7 +194,7 @@ class LocatorTest {
         assertEquals(0, locator.feed(p6).size());
         assertEquals(0, locator.feed(p7).size());
         assertEquals(0, locator.feed(p8).size());
-        var result = locator.feed(p9);
+        List<Package> result = locator.feed(p9);
         assertEquals(9, result.size());
         assertEquals(0, locator.sensors.get(2L).mysteryEpochs.size());
 
@@ -214,7 +215,7 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void feedNoFullStrength() throws Exception {
-        var locator = new Locator();
+        Locator locator = new Locator();
         assertEquals(0, locator.feed(p2).size());
         assertEquals(0, locator.feed(p3).size());
         assertEquals(0, locator.feed(p4).size());
@@ -223,7 +224,7 @@ class LocatorTest {
         assertEquals(0, locator.feed(p7).size());
         assertEquals(0, locator.feed(p8).size());
 
-        var res1 = locator.feed(p19);
+        List<Package> res1 =  locator.feed(p19);
 
         for (int i = 1; i < res1.size(); i++) {
             assertTrue(res1.get(i - 1).position.getPositionInBetween() <= res1.get(i).position.getPositionInBetween());
@@ -241,7 +242,7 @@ class LocatorTest {
 
         assertEquals(0, locator.feed(p16).size());
         assertEquals(0, locator.feed(p17).size());
-        var res2 = locator.feed(p18);
+        List<Package> res2 =  locator.feed(p18);
         for (int i = 1; i < res2.size(); i++) {
             assertTrue(res2.get(i - 1).position.getPositionInBetween() <= res2.get(i).position.getPositionInBetween());
             assertEquals(50, res2.get(i).position.getTotalDistance());
@@ -254,7 +255,7 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void feedRendezVous() throws Exception {
-        var locator = new Locator();
+        Locator locator = new Locator();
 
         // Start sensor two first and sensor three second
         assertEquals(0, locator.feed(p1).size());
@@ -273,7 +274,7 @@ class LocatorTest {
         assertEquals(0, locator.feed(new Package(3, 13)).size());
         assertEquals(0, locator.feed(new Package(3, 14, wirelessContact2_0)).size());
         assertEquals(0, locator.feed(new Package(3, 15, wirelessContact2_1)).size());
-        var resultS3 = locator.feed(new Package(3, 16, wirelessContact2_2));
+        List<Package> resultS3 = locator.feed(new Package(3, 16, wirelessContact2_2));
         assertEquals(10, resultS3.size());
         
         // Sensor two arrived now as well
@@ -287,7 +288,7 @@ class LocatorTest {
         assertEquals(0, locator.feed(new Package(2, 15)).size());
         assertEquals(0, locator.feed(new Package(2, 16, wirelessContact2_0)).size());
         assertEquals(0, locator.feed(new Package(2, 18, wirelessContact2_1)).size());
-        var resultS2 = locator.feed(new Package(2, 20, wirelessContact2_2));
+        List<Package> resultS2 = locator.feed(new Package(2, 20, wirelessContact2_2));
         assertEquals(14, resultS2.size());
 
         // Expect location of slower sensor to be equal to location of second sensor at time of Rdv
@@ -297,16 +298,16 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void relayDistanceTest() throws Exception {
-        var t = new TopologyAnalyzer();
+        TopologyAnalyzer t = new TopologyAnalyzer();
         assertEquals(100, t.getDistance(1001, 1002));
         assertEquals(150, t.getDistance(1001, 1004));
     }
 
     @org.junit.jupiter.api.Test
     void getGraphEdgePositionTest() throws Exception {
-        var ta = new TopologyAnalyzer();
-        var p = new Position(ta.getRelay(1001), ta.getRelay(1004), 110, 150);
-        var r = ta.getGraphEdgePosition(p);
+        TopologyAnalyzer ta = new TopologyAnalyzer();
+        Position p = new Position(ta.getRelay(1001), ta.getRelay(1004), 110, 150);
+        Position r = ta.getGraphEdgePosition(p);
         assertEquals(1002L, r.getStart().getId());
         assertEquals(1004L, r.getDest().getId());
         assertEquals(50, r.getTotalDistance(), .001);
@@ -315,9 +316,9 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void getTotalRoutePositionTest() throws Exception {
-        var ta = new TopologyAnalyzer();
-        var p = new Position(ta.getRelay(1002), ta.getRelay(1004), 30, 50);
-        var r = ta.getTotalRoutePosition(p, ta.getRelay(1001), ta.getRelay(1004));
+        TopologyAnalyzer ta = new TopologyAnalyzer();
+        Position p = new Position(ta.getRelay(1002), ta.getRelay(1004), 30, 50);
+        Position r = ta.getTotalRoutePosition(p, ta.getRelay(1001), ta.getRelay(1004));
         assertEquals(1001L, r.getStart().getId());
         assertEquals(1004L, r.getDest().getId());
         assertEquals(150, r.getTotalDistance(), .001);
@@ -329,7 +330,7 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void feedRendezVousJunctionTest1() throws Exception {
-        var locator = new Locator();
+        Locator locator = new Locator();
 
         assertEquals(0, locator.feed(p1).size());
         assertEquals(0, locator.feed(p2).size());
@@ -342,7 +343,7 @@ class LocatorTest {
         assertEquals(0, locator.feed(new Package(3, 20)).size());// 80
         assertEquals(0, locator.feed(new Package(3, 24)).size());// 100
 
-        var resultS3 = locator.feed(new Package(3, 28, wirelessContact4_2));
+        List<Package> resultS3 = locator.feed(new Package(3, 28, wirelessContact4_2));
         assertEquals(7, resultS3.size());// 120
         assertTrue(resultS3.get(3).getPosition().getPositionInBetween() >= locator.topologyAnalyzer.getDistance(1003, 1002));
 
@@ -353,7 +354,7 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void feedUnknownStartTest() throws Exception {
-        var locator = new Locator();
+        Locator locator = new Locator();
 
         assertEquals(0, locator.feed(new Package(3, 1)).size());
         assertEquals(0, locator.feed(new Package(3, 2)).size());
@@ -364,7 +365,7 @@ class LocatorTest {
         assertEquals(0, locator.feed(new Package(3, 20)).size());
         assertEquals(0, locator.feed(new Package(3, 24)).size());
 
-        var resultS3 = locator.feed(new Package(3, 28, wirelessContact2_2));
+        List<Package> resultS3 = locator.feed(new Package(3, 28, wirelessContact2_2));
         assertEquals(9, resultS3.size());// 120
         assertNull(resultS3.get(0).getPosition().getStart());
         assertEquals(1003, resultS3.get(0).getPosition().getDest().getId());
@@ -383,7 +384,7 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void feedUnknownStartRendezVousTest() throws Exception {
-        var locator = new Locator();
+        Locator locator = new Locator();
 
         locator.feed(new Package(2, 1, wirelessContact3_2));
         locator.feed(new Package(2, 2, wirelessContact3_2));
@@ -393,7 +394,7 @@ class LocatorTest {
         locator.feed(new Package(2, 6, wirelessContactS3_1));
         locator.feed(new Package(2, 7, wirelessContactS3_0));
         locator.feed(new Package(2, 9));
-        var resultS2 = locator.feed(new Package(2, 10, wirelessContact2_2));
+        List<Package> resultS2 = locator.feed(new Package(2, 10, wirelessContact2_2));
 
         assertEquals(0, locator.feed(new Package(3, 4)).size());
         assertEquals(0, locator.feed(new Package(3, 5, wirelessContactS2_0)).size());
@@ -404,7 +405,7 @@ class LocatorTest {
         assertEquals(0, locator.feed(new Package(3, 20)).size());
         assertEquals(0, locator.feed(new Package(3, 24)).size());
 
-        var resultS3 = locator.feed(new Package(3, 28, wirelessContact4_2));
+        List<Package> resultS3 = locator.feed(new Package(3, 28, wirelessContact4_2));
         assertEquals(9, resultS3.size());
         assertNull(resultS3.get(0).getPosition().getStart());
         assertEquals(1003, resultS3.get(3).getPosition().getStart().getId());
@@ -416,7 +417,7 @@ class LocatorTest {
 
     @org.junit.jupiter.api.Test
     void getEarliestSharedNodeTest() throws Exception {
-        var ta = new TopologyAnalyzer();
+        TopologyAnalyzer ta = new TopologyAnalyzer();
 
         assertEquals(ta.getRelay(1002), ta.getEarliestSharedNode(ta.getRelay(1001), ta.getRelay(1003), ta.getRelay(1002)));
         assertEquals(ta.getRelay(1001), ta.getEarliestSharedNode(ta.getRelay(1001), ta.getRelay(1001), ta.getRelay(1002)));

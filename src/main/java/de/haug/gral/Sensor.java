@@ -55,7 +55,7 @@ public class Sensor extends Node {
      * @return Return latest added Package or null if there is none
      */
     Package getLastPackage() {
-        var latestEpoch = getLatestEpoch();
+        Epoch latestEpoch = getLatestEpoch();
         if (latestEpoch == null) {
             return null;
         }
@@ -144,7 +144,7 @@ public class Sensor extends Node {
         RendezVous mostRecent = null;
         LinkedList<RendezVous> junk = new LinkedList<>();
 
-        for (var rdv : checkpoints) {
+        for (RendezVous rdv : checkpoints) {
             if (end > rdv.getTimestamp()) {
                 if (start < rdv.getTimestamp()) {
                     if (mostRecent == null) {
@@ -173,11 +173,11 @@ public class Sensor extends Node {
      */
     Long getLastRelayContactId(long timestampBound) {
         for (int i = getMysteryEpochs().size() - 1; i >= 0; i--) {
-            var e = getMysteryEpochs().get(i);
-            var latestPackage = e.getLatest();
+            Epoch e = getMysteryEpochs().get(i);
+            Package latestPackage = e.getLatest();
             if (latestPackage.getTimestamp() > timestampBound) return null;
 
-            var relayCandidate = latestPackage.getStrongestRelay();
+            WirelessContact relayCandidate = latestPackage.getStrongestRelay();
             if (relayCandidate != null) {
                 return relayCandidate.getNodeId();
             }

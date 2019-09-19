@@ -1,6 +1,7 @@
 package de.haug.gral;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -81,7 +82,7 @@ public class TopologyAnalyzer {
         if (startRelay == null || destRelay == null) throw new NoSuchElementException("Ids not found");
 
         ShortestPathAlgorithm<Node, DefaultWeightedEdge> shortestPathAlg = new DijkstraShortestPath<>(g);
-        var path = shortestPathAlg.getPath(startRelay, destRelay);
+        GraphPath<Node, DefaultWeightedEdge> path = shortestPathAlg.getPath(startRelay, destRelay);
         if (path == null) throw new RuntimeException("No such path in graph");
         return path;
     }
@@ -103,12 +104,12 @@ public class TopologyAnalyzer {
     Position getGraphEdgePosition(Position p) {
         if (p.getStart().equals(p.getDest())) return p;
 
-        var path = getShortestPath(p.getStart(), p.getDest());
+        GraphPath<Node, DefaultWeightedEdge> path = getShortestPath(p.getStart(), p.getDest());
 
         float leftWeight = p.getPositionInBetween();
 
         for(DefaultWeightedEdge e : path.getEdgeList()) {
-            var weight = g.getEdgeWeight(e);
+            double weight = g.getEdgeWeight(e);
 
             if (weight >= leftWeight) {
                 return new Position(g.getEdgeSource(e), g.getEdgeTarget(e), leftWeight, (float) weight);
@@ -130,35 +131,29 @@ public class TopologyAnalyzer {
      */
     Position getTotalRoutePosition(Position edgePosition, Node start, Node end) {
 
-        var path = getShortestPath(start, end);
+        GraphPath<Node, DefaultWeightedEdge> path = getShortestPath(start, end);
 
-        var criticalEdge = g.getEdge(edgePosition.getStart(), edgePosition.getDest());
+        DefaultWeightedEdge criticalEdge = g.getEdge(edgePosition.getStart(), edgePosition.getDest());
         if (criticalEdge == null) {
             if (edgePosition.getStart().equals(edgePosition.getDest())) {
                 if (edgePosition.getDest().equals(end)) {
-                    var totalDistance = getDistance(start.getId(), end.getId());
+                    float totalDistance = getDistance(start.getId(), end.getId());
                     return new Position(start, end, totalDistance, totalDistance);
                 }
                 if (edgePosition.getStart().equals(start)) {
-                    var totalDistance = getDistance(start.getId(), end.getId());
+                    float totalDistance = getDistance(start.getId(), end.getId());
                     return new Position(start, end, 0, totalDistance);
                 }
             }
 
-            try {
-                var edgePosPath = getShortestPath(edgePosition.getStart(), edgePosition.getDest());
-                if (path.getEdgeList().containsAll(edgePosPath.getEdgeList())) {
-                    var weight = 0f;
-                    for (var refEdge : path.getEdgeList()) {
-                        if (edgePosPath.getEdgeList().contains(refEdge)) break;
-                    }
-                    weight += edgePosition.getPositionInBetween();
-                    return new Position(start, end, weight, (float)path.getWeight());
+            GraphPath<Node, DefaultWeightedEdge> edgePosPath = getShortestPath(edgePosition.getStart(), edgePosition.getDest());
+            if (path.getEdgeList().containsAll(edgePosPath.getEdgeList())) {
+                float weight = 0f;
+                for (DefaultWeightedEdge refEdge : path.getEdgeList()) {
+                    if (edgePosPath.getEdgeList().contains(refEdge)) break;
                 }
-
-            } catch (RuntimeException e) {
-                // No path between edgePosition.getStart() and edgePosition.getDest()
-                throw e;
+                weight += edgePosition.getPositionInBetween();
+                return new Position(start, end, weight, (float)path.getWeight());
             }
 
             throw new RuntimeException("No edge between start and end vertex");
@@ -166,7 +161,7 @@ public class TopologyAnalyzer {
 
         if (!path.getEdgeList().contains(criticalEdge)) {
             if (edgePosition.getPositionInBetween() == edgePosition.getTotalDistance()) {
-                for(var v : path.getVertexList()) {
+                for(Node v : path.getVertexList()) {
                     if (edgePosition.getDest().equals(v)) {
                         return new Position(start, end, getDistance(start.getId(), v.getId()), (float)path.getWeight());
                     }
@@ -174,16 +169,16 @@ public class TopologyAnalyzer {
 
 
             } else if (edgePosition.getPositionInBetween() == 0 && edgePosition.getStart().equals(end)) {
-                var length = (float)path.getWeight();
+                float length = (float)path.getWeight();
                 return new Position(start, end, length, length);
             }
 
             throw new RuntimeException("Position edge not in path");
         }
 
-        var weight = edgePosition.getPositionInBetween();
+        float weight = edgePosition.getPositionInBetween();
 
-        for(var e : path.getEdgeList()) {
+        for(DefaultWeightedEdge e : path.getEdgeList()) {
             if (e.equals(criticalEdge)) {
                 break;
             }
@@ -200,20 +195,20 @@ public class TopologyAnalyzer {
      * @return Earliest node that is on the path of both start1 and start2 to dest
      */
     Node getEarliestSharedNode(Node start1, Node start2, Node dest) {
-        var path1 = getShortestPath(start1, dest);
-        var path2 = getShortestPath(start2, dest);
+        GraphPath<Node, DefaultWeightedEdge> path1 = getShortestPath(start1, dest);
+        GraphPath<Node, DefaultWeightedEdge> path2 = getShortestPath(start2, dest);
 
-        var longerPath = path1.getLength() <= path2.getLength() ? path1 : path2;
-        var shorterPath = path1.getLength() <= path2.getLength() ? path2 : path1;
+        GraphPath<Node, DefaultWeightedEdge> longerPath = path1.getLength() <= path2.getLength() ? path1 : path2;
+        GraphPath<Node, DefaultWeightedEdge> shorterPath = path1.getLength() <= path2.getLength() ? path2 : path1;
 
-        var difference = longerPath.getLength() - shorterPath.getLength();
+        int difference = longerPath.getLength() - shorterPath.getLength();
 
-        var longerPathEdges = longerPath.getEdgeList();
-        var shorterPathEdges = shorterPath.getEdgeList();
+        List<DefaultWeightedEdge> longerPathEdges = longerPath.getEdgeList();
+        List<DefaultWeightedEdge> shorterPathEdges = shorterPath.getEdgeList();
 
         for (int i = longerPath.getLength() - 1; i >= 0; i--) {
-            var longEdge = longerPathEdges.get(i);
-            var shortEdge = shorterPathEdges.get(i - difference);
+            DefaultWeightedEdge longEdge = longerPathEdges.get(i);
+            DefaultWeightedEdge shortEdge = shorterPathEdges.get(i - difference);
 
             if (!g.getEdgeSource(longEdge).equals(g.getEdgeSource(shortEdge))) return g.getEdgeTarget(longEdge);
         }
@@ -231,13 +226,13 @@ public class TopologyAnalyzer {
         if (start == null || dest == null || pos == null) return false;
         if (pos.getStart() == null || pos.getDest() == null) return false;
 
-        var route = getShortestPath(pos.getStart(), pos.getDest());
+        GraphPath<Node, DefaultWeightedEdge> route = getShortestPath(pos.getStart(), pos.getDest());
         if (pos.getStart() == pos.getDest() && route.getVertexList().contains(pos.getStart())) return true;
 
-        var edge = g.getEdge(start, dest);
+        DefaultWeightedEdge edge = g.getEdge(start, dest);
         if (edge == null) return false;
 
-        for (var e : route.getEdgeList()) {
+        for (DefaultWeightedEdge e : route.getEdgeList()) {
             if (e.equals(edge)) return true;
         }
 

@@ -101,7 +101,7 @@ public class Package {
      * @return The WirelessContact from contacts if found or null otherwise
      */
     WirelessContact getContactToNode(long id) {
-        for (var c : contacts) {
+        for (WirelessContact c : contacts) {
             if (c.getNodeId() == id) {
                 return c;
             }

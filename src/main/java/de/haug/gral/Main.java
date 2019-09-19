@@ -1,5 +1,6 @@
 package de.haug.gral;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -19,7 +20,7 @@ public class Main {
             return;
         }
 
-        var l = new Locator();
+        Locator l = new Locator();
 
 	    try (Stream<String> stream = Files.lines(Paths.get(args[0]))) {
 	        stream.forEach(line -> {
@@ -27,8 +28,8 @@ public class Main {
                 JSONObject obj = new JSONObject(line);
                 if (!obj.getString("sensor").equals("beacon")) return;
 
-                var contacts = obj.getJSONArray("value");
-                var sid = 1L;
+                JSONArray contacts = obj.getJSONArray("value");
+                long sid = 1L;
                 try {
                     sid = obj.getLong("id");
                 } catch (JSONException e) {
@@ -37,7 +38,7 @@ public class Main {
 
                 Package p;
                 if (contacts.length() >= 2) {
-                    var contactSet = new HashSet<WirelessContact>();
+                    HashSet<WirelessContact> contactSet = new HashSet<>();
                     for (int i = 0; i < contacts.length(); i += 2) {
                         contactSet.add(new WirelessContact(contacts.getLong(i), contacts.getFloat(i + 1)));
                     }
@@ -51,7 +52,7 @@ public class Main {
 
                 List<Package> result = l.feed(p);
 
-                for (var r : result) {
+                for (Package r : result) {
                     System.out.printf(Locale.US, "{\"estimated_position\": %f, \"id\": %d, \"timestamp\": %d}\n",
                             l.topologyAnalyzer.getTotalRoutePosition(r.getPosition(),
                                     l.topologyAnalyzer.getRelay(args.length >= 2 && sid % 2 != 0 ? 1004 : 1001),

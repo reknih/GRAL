@@ -92,8 +92,8 @@ class Epoch {
         LinkedList<WirelessContact> detectedSensors = new LinkedList<>(p.contacts);
         detectedSensors.removeIf(c -> !Node.isSensor(c.getNodeId()));
 
-        for (var wc : detectedSensors) {
-            var id = wc.getNodeId();
+        for (WirelessContact wc : detectedSensors) {
+            long id = wc.getNodeId();
             if (strongestContact.get(id) == null || strongestContact.get(id).getContactToNode(id) == null
                     || strongestContact.get(id).getContactToNode(id).getStrength() <= wc.getStrength()) {
                 strongestContact.put(id, p);
@@ -108,7 +108,7 @@ class Epoch {
      */
     void renewStrongestContactInfo () {
         strongestContact.clear();
-        for (var p : packages) {
+        for (Package p : packages) {
             setStrongestContact(p);
         }
     }
@@ -164,7 +164,7 @@ class Epoch {
      * @return Whether the node had contact to the node specified in the arguments
      */
     boolean hasContactToNode(Node n) {
-        for (var p : packages) {
+        for (Package p : packages) {
             if (p.getContactToNode(n.id) != null) {
                 return true;
             }
@@ -204,7 +204,7 @@ class Epoch {
             throw new EpochException("Distance not set");
         }
 
-        var duration = getDuration();
+        long duration = getDuration();
 
         if (duration == 0) return 1;
 
@@ -220,7 +220,7 @@ class Epoch {
     void setPackagePositions(float distance, Position startingPosition) throws EpochException {
         this.distance = distance;
 
-        for (var p : packages) {
+        for (Package p : packages) {
             p.setPosition(new Position(startingPosition.getStart(), startingPosition.getDest(),
                     (float)(startingPosition.getPositionInBetween() + (p.getTimestamp() - getStartTime())
                             * getAverageSpeed()),
@@ -241,12 +241,12 @@ class Epoch {
      * @return The newly instantiated split-off Epoch
      */
     Epoch split(Package splitPackage, Position endPosition) {
-        var splitIndex = packages.indexOf(splitPackage);
+        int splitIndex = packages.indexOf(splitPackage);
 
         // Return nothing if this was the last package
         if (splitIndex >= packages.size()) return null;
 
-        var subList = packages.subList(splitIndex + 1, packages.size());
+        List<Package> subList = packages.subList(splitIndex + 1, packages.size());
 
         Epoch returnEpoch = null;
         if (subList.size() > 0) {
@@ -304,7 +304,7 @@ class Epoch {
 
     @Override
     public String toString() {
-        return type.name() + " epoch with " + String.valueOf(packages.size()) + " packages";
+        return type.name() + " epoch with " + packages.size() + " packages";
     }
 
     /**
@@ -334,11 +334,11 @@ class Epoch {
         if ((index < 1 && backwards) || (index > epochs.size() - 2 && !backwards))
             throw new NoSuchElementException("Index at border of list");
 
-        var skip = true;
+        boolean skip = true;
         for (int i = backwards ? index - 1 : index + 1; i < epochs.size() && i >= 0; i = backwards ? i - 1 : i + 1) {
-            var epoch = epochs.get(i);
+            Epoch epoch = epochs.get(i);
             if (skip && (backwards ? i + 1 : i - 1) < epochs.size() && (backwards ? i + 1 : i - 1) > 0) {
-                var nextEpoch = epochs.get(backwards ? i + 1 : i - 1);
+                Epoch nextEpoch = epochs.get(backwards ? i + 1 : i - 1);
                 if (nextEpoch.getType().equals(epoch.getType())) {
                     if (nextEpoch.type.equals(EpochType.VOYAGE)) continue;
                     if (nextEpoch.getRelayContact().getNodeId() == epoch.getRelayContact().getNodeId()) continue;
