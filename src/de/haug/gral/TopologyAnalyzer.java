@@ -1,4 +1,4 @@
-package de.haug.sensor_location;
+package de.haug.gral;
 
 import java.util.HashMap;
 import java.util.Map;

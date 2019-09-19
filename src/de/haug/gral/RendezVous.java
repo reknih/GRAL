@@ -1,4 +1,4 @@
-package de.haug.sensor_location;
+package de.haug.gral;
 
 class RendezVous extends Position {
     private final Node interceptor;

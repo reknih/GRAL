@@ -1,4 +1,4 @@
-package de.haug.sensor_location;
+package de.haug.gral;
 
 /**
  * Exceptions thrown by the Epoch class during its operations.

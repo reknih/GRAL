@@ -1,9 +1,9 @@
-# SensorLocation
+# GRAL
 
 > A tool to approximate locations of wireless sensors in a tree-like network topology with few known locations
 
 This algorithm is suitable for a central batch approximation of the locations of nodes in a sensor network in topologies
-that can be modeled as graphs with weighted vertices.
+that can be modeled as graphs with weighted vertices. GRAL stands for graph-based location.
 
 ## Usage
 
