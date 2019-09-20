@@ -1,6 +1,8 @@
 package de.haug.gral;
 
-public class Position {
+import java.io.Serializable;
+
+public class Position implements Serializable {
     /**
      * The start node of the current trajectory
      */
@@ -65,6 +67,14 @@ public class Position {
     @SuppressWarnings("WeakerAccess")
     public float getTotalDistance() {
         return totalDistance;
+    }
+
+    /**
+     * @return A string representing the object as JSON
+     */
+    public String toJsonString() {
+        return String.format("{ \"start\": %d, \"destination\": %d, \"distanceTraveled\": %f, \"totalDistance\": %f }",
+                getStart().getId(), getDest().getId(), getPositionInBetween(), getTotalDistance());
     }
 
     /**

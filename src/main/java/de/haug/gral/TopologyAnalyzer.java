@@ -1,5 +1,6 @@
 package de.haug.gral;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,7 @@ import org.jgrapht.graph.SimpleWeightedGraph;
 /**
  * Class to reason about the graph topology
  */
-public class TopologyAnalyzer {
+public class TopologyAnalyzer implements Serializable {
     /**
      * Graph object that represents the topology
      */
@@ -27,20 +28,45 @@ public class TopologyAnalyzer {
     protected Map<Long, Relay> relays;
 
     /**
-     * Constructor that adds sample topology
+     * Constructor
      */
     public TopologyAnalyzer() {
         relays = new HashMap<>();
+    }
 
+    /**
+     * Adds a relay to the graph
+     * @param id Id number of new relay
+     */
+    @SuppressWarnings("WeakerAccess")
+    public void addRelay(long id) {
+        Relay r = new Relay(id);
+        relays.put(id, r);
+        g.addVertex(r);
+    }
+
+    /**
+     * Adds a edge to the environment graph
+     * @param startId Id of start vertex
+     * @param destId Id of destination vertex
+     * @param weight Link length / edge weight
+     */
+    public void addEdge(long startId, long destId, float weight) {
+        Relay start = getRelay(startId);
+        Relay dest = getRelay(destId);
+        if (start == null || dest == null) throw new RuntimeException("Start or destination vertex not yet added");
+        g.addEdge(start, dest);
+        g.setEdgeWeight(start, dest, weight);
+    }
+
+    /**
+     * Adds a sample environment graph for testing
+     */
+    void addSampleNetwork() {
         addRelay(1001);
         addRelay(1002);
         addRelay(1003);
         addRelay(1004);
-
-        g.addVertex(getRelay(1001L));
-        g.addVertex(getRelay(1002L));
-        g.addVertex(getRelay(1003L));
-        g.addVertex(getRelay(1004L));
 
         g.addEdge(getRelay(1001L), getRelay(1002L));
         g.setEdgeWeight(getRelay(1001L), getRelay(1002L), 50);
@@ -54,15 +80,6 @@ public class TopologyAnalyzer {
 
         //g.addEdge(getRelay(1002L), getRelay(1004L));
         //g.setEdgeWeight(getRelay(1002L), getRelay(1004L), 50);
-    }
-
-    /**
-     * Adds a relay to the graph
-     * @param id Id number of new relay
-     */
-    @SuppressWarnings("WeakerAccess")
-    protected void addRelay(long id) {
-        relays.put(id, new Relay(id));
     }
 
     /**

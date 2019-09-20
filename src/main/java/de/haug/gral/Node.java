@@ -1,9 +1,11 @@
 package de.haug.gral;
 
+import java.io.Serializable;
+
 /**
  * A node in the topology graph.
  */
-public abstract class Node {
+public abstract class Node implements Serializable {
     /**
      * The unique node id
      */

@@ -1,11 +1,12 @@
 package de.haug.gral;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * Class that holds a bundle of packages with the same heading.
  */
-class Epoch {
+class Epoch implements Serializable {
     /**
      * List of packages in the epoch, contains at least one element and ordered by timestamp.
      */

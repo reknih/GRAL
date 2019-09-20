@@ -1,11 +1,12 @@
 package de.haug.gral;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * Class that can annotate packages with estimated positions.
  */
-public class Locator {
+public class Locator implements Serializable {
 
     /**
      * The signal strength above which a sensor is
@@ -23,6 +24,9 @@ public class Locator {
      */
     private final int TIME_TOLERANCE = 3;
 
+    private boolean checkpoints;
+    private boolean pathRectification;
+
     /**
      * Mapping the sensor's id's to the objects
      */
@@ -31,10 +35,35 @@ public class Locator {
 
     /**
      * Constructs a new Locator instance
+     * @param t Your populated TopologyAnalyzer
+     * @param checkpoints Whether to use checkpoints for mobile node encounters
+     * @param pathRectification Whether to use graph-based path rectification
+     */
+    public Locator(TopologyAnalyzer t, boolean checkpoints, boolean pathRectification) {
+        this.checkpoints = checkpoints;
+        this.pathRectification = pathRectification;
+        sensors = new HashMap<>();
+        this.topologyAnalyzer = t;
+        if (topologyAnalyzer == null) {
+            topologyAnalyzer = new TopologyAnalyzer();
+            topologyAnalyzer.addSampleNetwork();
+        }
+    }
+
+    /**
+     * Constructs a new Locator instance with a sample topology
+     * @param checkpoints Whether to use checkpoints for mobile node encounters
+     * @param pathRectification Whether to use graph-based path rectification
+     */
+    public Locator(boolean checkpoints, boolean pathRectification) {
+        this(null, checkpoints, pathRectification);
+    }
+
+    /**
+     * Constructs a new Locator instance with a sample topology and all features activated
      */
     public Locator() {
-        sensors = new HashMap<>();
-        topologyAnalyzer = new TopologyAnalyzer();
+        this(null, true, true);
     }
 
     /**
@@ -505,11 +534,12 @@ public class Locator {
             if (result != null) return result;
 
             // Check if epochs have to be split and calculations redone because of contact to other sensors.
+            if (!checkpoints && !pathRectification) continue;
             for (long k : epoch.getStrongestContact().keySet()) {
                 Sensor contactedSensor = sensors.get(k);
                 Package strongPackage = epoch.getStrongestContact().get(k);
 
-                if (epoch.getType().equals(Epoch.EpochType.VOYAGE)) {
+                if (pathRectification && epoch.getType().equals(Epoch.EpochType.VOYAGE)) {
                     // Check for each contact if earliest possible confluence is greater than the calculated position
                     Long lastRelayId = contactedSensor.getLastRelayContactId(strongPackage.getTimestamp()
                             + TIME_TOLERANCE);
@@ -540,7 +570,7 @@ public class Locator {
                     }
                 }
 
-                if (strongPackage.getPosition().getStart() != null
+                if (checkpoints && strongPackage.getPosition().getStart() != null
                         && strongPackage.getPosition().getDest() != null) {
                     // Do this once final positions are determined
                     Position pos = topologyAnalyzer.getGraphEdgePosition(strongPackage.getPosition());

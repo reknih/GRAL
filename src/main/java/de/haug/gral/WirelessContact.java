@@ -31,6 +31,25 @@ public class WirelessContact {
         this.direction = Direction.UNKNOWN;
     }
 
+    public static Object contactListJsonString(Collection<WirelessContact> contacts) {
+        String json = "[";
+        for (WirelessContact w : contacts) {
+            json += w.toJsonString();
+            json += ", ";
+        }
+
+        if (contacts.size() > 0) {
+            json = json.substring(0, json.length() - 2);
+        }
+
+        json += "]";
+        return json;
+    }
+
+    private String toJsonString() {
+        return String.format("{ \"deviceId\": %d, \"strength\": %f }", getNodeId(), getStrength());
+    }
+
     /**
      * @return The Id of the contacted node
      */

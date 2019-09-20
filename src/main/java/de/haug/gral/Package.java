@@ -1,5 +1,6 @@
 package de.haug.gral;
 
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
@@ -7,7 +8,7 @@ import java.util.Set;
 /**
  * A package containing sensor measurements
  */
-public class Package {
+public class Package implements Serializable {
     /**
      * The id of the sensor that has created the package
      */
@@ -108,6 +109,15 @@ public class Package {
         }
 
         return null;
+    }
+
+    /**
+     * @return A string representing the object as JSON
+     */
+    public String toJsonString() {
+        String positionString = position != null ? position.toJsonString() : "null";
+        return String.format("{ \"deviceId\": %d, \"timestamp\": %d, \"contacts\": %s, \"position\": %s }",
+                getSensorId(), getTimestamp(), WirelessContact.contactListJsonString(contacts), positionString);
     }
 
     /**
