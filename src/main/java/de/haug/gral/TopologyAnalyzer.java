@@ -46,6 +46,18 @@ public class TopologyAnalyzer implements Serializable {
     }
 
     /**
+     * Adds a relay to the graph
+     * @param id Id number of new relay
+     * @param radius The effective wireless radius of the relay
+     */
+    @SuppressWarnings("WeakerAccess")
+    public void addRelay(long id, float radius) {
+        Relay r = new Relay(id, radius);
+        relays.put(id, r);
+        g.addVertex(r);
+    }
+
+    /**
      * Adds a edge to the environment graph
      * @param startId Id of start vertex
      * @param destId Id of destination vertex

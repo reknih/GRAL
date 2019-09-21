@@ -1,0 +1,5 @@
+[
+  {"start": 1001, "destination": 1002, "weight": 50, "destinationRadius": 2.1},
+  {"start": 1003, "destination": 1002, "weight": 70, "startRadius": 5.5},
+  {"start": 1002, "destination": 1004, "weight": 50}
+]
