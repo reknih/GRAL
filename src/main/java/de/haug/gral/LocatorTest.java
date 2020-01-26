@@ -98,8 +98,8 @@ class LocatorTest {
         Locator l = new Locator();
         Package p = new Package(1, 1);
         l.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
-        assertTrue(sensor1.mysteryEpochs.size() == 1);
-        assertTrue(sensor1.mysteryEpochs.get(0).getLatest().equals(p));
+        assertEquals(1, sensor1.mysteryEpochs.size());
+        assertEquals(sensor1.mysteryEpochs.get(0).getLatest(), p);
     }
 
     @org.junit.jupiter.api.Test
@@ -109,9 +109,9 @@ class LocatorTest {
         Package p2 = new Package(1, 2);
         l.addToEpochs(sensor1, p, Epoch.EpochType.RELAY_APPROACH);
         l.addToEpochs(sensor1, p2, Epoch.EpochType.RELAY_APPROACH);
-        assertTrue(sensor1.mysteryEpochs.size() == 1);
-        assertTrue(sensor1.mysteryEpochs.get(0).getPackages().size() == 2);
-        assertTrue(sensor1.mysteryEpochs.get(0).getLatest().equals(p2));
+        assertEquals(1, sensor1.mysteryEpochs.size());
+        assertEquals(2, sensor1.mysteryEpochs.get(0).getPackages().size());
+        assertEquals(sensor1.mysteryEpochs.get(0).getLatest(), p2);
     }
 
     @org.junit.jupiter.api.Test
@@ -413,6 +413,24 @@ class LocatorTest {
         assertEquals(1002, resultS3.get(3).getPosition().getDest().getId());
         assertEquals(0, resultS3.get(0).getPosition().getPositionInBetween());
         assertEquals(Float.POSITIVE_INFINITY, resultS3.get(0).getPosition().getTotalDistance());
+    }
+
+    @org.junit.jupiter.api.Test
+    void baseLineTest() throws Exception {
+        Locator locator = new Locator();
+
+        locator.baseLineFeed(new Package(2, 1));
+        locator.baseLineFeed(new Package(2, 2, wirelessContact1_1));
+        locator.baseLineFeed(new Package(2, 3, wirelessContact1_2));
+        locator.baseLineFeed(new Package(2, 4, wirelessContact1_1));
+        locator.baseLineFeed(new Package(2, 5));
+        locator.baseLineFeed(new Package(2, 6));
+        locator.baseLineFeed(new Package(2, 7, wirelessContact2_1));
+        locator.baseLineFeed(new Package(2, 8, wirelessContact2_0));
+        locator.baseLineFeed(new Package(2, 9));
+        locator.baseLineFeed(new Package(2, 10));
+        locator.baseLineFeed(new Package(2, 11, wirelessContact3_2));
+        locator.baseLineProcess(2L);
     }
 
     @org.junit.jupiter.api.Test

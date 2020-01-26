@@ -2,6 +2,7 @@ package de.haug.gral;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Class for the sensors that will move and create packages
@@ -210,5 +211,16 @@ public class Sensor extends Node {
      */
     void useCheckpoint(RendezVous checkpoint) {
         checkpoints.remove(checkpoint);
+    }
+
+    /**
+     * Adds the sensor id to the sensors map if it is not already present
+     * @param id The id to check for in the map
+     * @param sensors The sensors map
+     */
+    static void ensureAddedSensor(Long id, Map<Long, Sensor> sensors) {
+        if (!sensors.containsKey(id)) {
+            sensors.put(id, new Sensor(id));
+        }
     }
 }

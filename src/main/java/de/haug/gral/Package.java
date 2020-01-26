@@ -3,6 +3,7 @@ package de.haug.gral;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -118,6 +119,32 @@ public class Package implements Serializable {
         String positionString = position != null ? position.toJsonString() : "null";
         return String.format("{ \"deviceId\": %d, \"timestamp\": %d, \"contacts\": %s, \"position\": %s }",
                 getSensorId(), getTimestamp(), WirelessContact.contactListJsonString(contacts), positionString);
+    }
+
+    /**
+     * @return A string representing the object as JSON
+     */
+    public String toJsonString(boolean compat, List<Long[]> applyPairs, TopologyAnalyzer t) {
+        String positionString = position != null ? position.toJsonString() : "null";
+        if (position != null && applyPairs.size() > 0) {
+            Position edgePos = t.getGraphEdgePosition(position);
+            for (Long[] pair : applyPairs) {
+                try {
+                    positionString =
+                            Float.toString(t.getTotalRoutePosition(edgePos, t.getRelay(pair[0]), t.getRelay(pair[1])).getPositionInBetween());
+                    break;
+                } catch (RuntimeException e) {
+                    // It's fine
+                }
+            }
+        }
+        if (compat) {
+            return String.format("{ \"id\": %d, \"time\": %d, \"estimated_position\": %s }",
+                    getSensorId(), getTimestamp(), positionString);
+        } else {
+            return String.format("{ \"deviceId\": %d, \"timestamp\": %d, \"contacts\": %s, \"position\": %s }",
+                    getSensorId(), getTimestamp(), WirelessContact.contactListJsonString(contacts), positionString);
+        }
     }
 
     /**

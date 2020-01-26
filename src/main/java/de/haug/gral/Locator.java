@@ -66,6 +66,105 @@ public class Locator implements Serializable {
         this(null, true, true);
     }
 
+    public void baseLineFeed(Package p) {
+        Sensor.ensureAddedSensor(p.getSensorId(), sensors);
+        Sensor s = sensors.get(p.getSensorId());
+
+        if (s.getMysteryEpochs().size() <= 0) {
+            s.addEpoch(Epoch.EpochType.BASELINE, p);
+        } else {
+            s.getMysteryEpochs().get(0).addPackage(p);
+        }
+    }
+
+    public List<Package> baseLineProcess(Long sensorId) {
+        Sensor s = sensors.get(sensorId);
+        if (s == null) throw new RuntimeException("Unknown sensor id requested for processing");
+
+        if (s.getMysteryEpochs().size() <= 0) return new LinkedList<>();
+
+        Epoch baselineEpoch = s.getMysteryEpochs().get(0);
+        List<Package> sameRelayPacks = new LinkedList<>();
+        Long lastId = -1L;
+        List<List<Package>> etapList = new LinkedList<>();
+
+        for (Package p : baselineEpoch.getPackages()) {
+            if (etapList.size() <= 0) {
+                etapList.add(new LinkedList<>());
+            }
+
+            WirelessContact wcStrongest = p.getStrongestRelay();
+            if (sameRelayPacks.size() > 0 && (wcStrongest == null || wcStrongest.getNodeId() != sameRelayPacks.get(0).getStrongestRelay().getNodeId())) {
+                float max = Float.NEGATIVE_INFINITY;
+                int maxi = 0;
+                for (int i = 0; i < sameRelayPacks.size(); i++) {
+                    WirelessContact wcStrongestPrev = sameRelayPacks.get(i).getStrongestRelay();
+                    if (wcStrongestPrev.getStrength() >= max) {
+                        max = wcStrongestPrev.getStrength();
+                        maxi = i;
+                    }
+                }
+
+                lastId = sameRelayPacks.get(0).getStrongestRelay().getNodeId();
+                etapList.get(etapList.size() - 1).addAll(sameRelayPacks.subList(0, maxi + 1));
+                etapList.add(new LinkedList<>(sameRelayPacks.subList(maxi + 1, sameRelayPacks.size())));
+                sameRelayPacks.clear();
+            }
+
+            if (wcStrongest == null || wcStrongest.getNodeId() == lastId) {
+                // No relay contact
+                // Add to existing etap or create new if none
+                etapList.get(etapList.size() - 1).add(p);
+            } else {
+                sameRelayPacks.add(p);
+            }
+        }
+        if (sameRelayPacks.size() > 0) {
+            float max = Float.NEGATIVE_INFINITY;
+            int maxi = 0;
+            for (int i = 0; i < sameRelayPacks.size(); i++) {
+                WirelessContact wcStrongestPrev = sameRelayPacks.get(i).getStrongestRelay();
+                if (wcStrongestPrev.getStrength() >= max) {
+                    max = wcStrongestPrev.getStrength();
+                    maxi = i;
+                }
+            }
+
+            etapList.get(etapList.size() - 1).addAll(sameRelayPacks.subList(0, maxi + 1));
+            etapList.add(new LinkedList<>(sameRelayPacks.subList(maxi + 1, sameRelayPacks.size())));
+            sameRelayPacks.clear();
+        }
+
+        List<Package> output = new LinkedList<>();
+
+        for (int i = 0; i < etapList.size(); i++){
+            if (i == 0) continue;
+            List<Package> etap = etapList.get(i);
+            if (i == etapList.size() - 1 && etap.size() <= 0) continue;
+            WirelessContact wcStrongestEnd = etap.get(etap.size() - 1).getStrongestRelay();
+            if (wcStrongestEnd == null) continue;
+            WirelessContact wcStrongestStart = etapList.get(i - 1).get(etapList.get(i - 1).size() - 1).getStrongestRelay();
+            if (wcStrongestStart == null)
+                throw new RuntimeException("Etap ends with consecutive etaps should always feature a relay");
+
+            float dist = topologyAnalyzer.getDistance(wcStrongestStart.getNodeId(), wcStrongestEnd.getNodeId());
+            float timeDelta = etap.get(etap.size() - 1).getTimestamp() - etapList.get(i - 1).get(etapList.get(i - 1).size() - 1).getTimestamp();
+
+            for (Package p : etap) {
+                float start = p.getTimestamp() - etapList.get(i - 1).get(etapList.get(i - 1).size() - 1).getTimestamp();
+                p.setPosition(new Position(
+                        topologyAnalyzer.getRelay(wcStrongestStart.getNodeId()),
+                        topologyAnalyzer.getRelay(wcStrongestEnd.getNodeId()),
+                        Math.min(dist * start / timeDelta, dist),
+                        dist));
+            }
+            output.addAll(etap);
+        }
+
+        s.getMysteryEpochs().clear();
+        return output;
+    }
+
     /**
      * Feed a package into the locator. The package will be added to the localization queue of the sensors.
      * The return value will be an empty list if no new localizations could be made or have several items if
@@ -73,13 +172,9 @@ public class Locator implements Serializable {
      * @param p The package to feed
      * @return List of previously fed, localized packages
      */
-    @SuppressWarnings("WeakerAccess")
     public List<Package> feed(Package p) {
         // Add sensor to dict if new
-        if (!sensors.containsKey(p.getSensorId())) {
-            sensors.put(p.getSensorId(), new Sensor(p.getSensorId()));
-        }
-
+        Sensor.ensureAddedSensor(p.getSensorId(), sensors);
         Sensor s = sensors.get(p.getSensorId());
 
         // Add wireless neighbourhood to dictionaries and set maxSignal
@@ -559,7 +654,6 @@ public class Locator implements Serializable {
                                     new Position(strongPackage.position.getStart(),
                                     strongPackage.position.getDest(), minDistance,
                                     strongPackage.position.getTotalDistance())));
-                            System.err.println("Did rectification!");
                             if (newEpoch != null) {
                                 s.mysteryEpochs.add(i + 1, newEpoch);
                                 maxIndex++;
@@ -575,8 +669,8 @@ public class Locator implements Serializable {
                     // Do this once final positions are determined
                     Position pos = topologyAnalyzer.getGraphEdgePosition(strongPackage.getPosition());
                     Long lastId = contactedSensor.getLastRelayContactId();
-                    if (lastId != null && topologyAnalyzer.contains(topologyAnalyzer.getRelay(lastId),
-                            pos.getDest(), pos)) {
+                    if (lastId != null && topologyAnalyzer.contains(pos.getStart(),
+                            pos.getDest(), new Position(topologyAnalyzer.getRelay(lastId), pos.getDest(), 0, Float.POSITIVE_INFINITY))) {
                         contactedSensor.addRendezVous(
                                 new RendezVous(pos, s, strongPackage.getTimestamp()));
                     }

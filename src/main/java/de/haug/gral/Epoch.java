@@ -28,7 +28,8 @@ class Epoch implements Serializable {
     enum EpochType {
         RELAY_WITHDRAWAL,
         RELAY_APPROACH,
-        VOYAGE
+        VOYAGE,
+        BASELINE
     }
 
     /**

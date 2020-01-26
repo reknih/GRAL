@@ -32,8 +32,14 @@ public class Main {
         Option optionExample = new Option(null, "example", false,
                 "Populate with an example environment graph for demos");
 
+        Option optionBaseline = new Option("b", "baseline", false,
+                "Use a primitive baseline algorithm instead of GRAL");
+
         Option optionHelp = new Option(null, "help", false,
                 "Print this message and quit");
+
+        Option optionApplyEndpoints = new Option("e", "endpoints", true,
+                "Apply the comma separated list of endpoints to the node positions");
 
         Options options = new Options();
         CommandLineParser parser = new DefaultParser();
@@ -42,6 +48,8 @@ public class Main {
         options.addOption(optionRectification);
         options.addOption(optionFile);
         options.addOption(optionExample);
+        options.addOption(optionBaseline);
+        options.addOption(optionApplyEndpoints);
         options.addOption(optionHelp);
 
         HelpFormatter formatter = new HelpFormatter();
@@ -57,6 +65,18 @@ public class Main {
         if (commandLine.hasOption(optionHelp.getLongOpt())) {
             printHelpMessage(formatter, options, 0);
             return;
+        }
+
+        List<Long[]> ranges = new LinkedList<>();
+
+        if (commandLine.hasOption(optionApplyEndpoints.getLongOpt())) {
+            String s = commandLine.getOptionValue(optionApplyEndpoints.getOpt());
+            String[] res = s.split(",");
+            for (String range : res) {
+                String[] nums = range.split("-");
+                Long[] a = { Long.valueOf(nums[0]), Long.valueOf(nums[1]) };
+                ranges.add(a);
+            }
         }
 
         Locator l;
@@ -182,14 +202,23 @@ public class Main {
 
 
         if (commandLine.hasOption(optionFile.getOpt())) {
+            boolean compat = false;
             try (Stream<String> stream = Files.lines(Paths.get(commandLine.getOptionValue(optionFile.getOpt())))) {
                 stream.forEach(line -> {
                     try {
-                        parseJsonLine(line, l);
+                        parseJsonLine(line, l, ranges, commandLine.hasOption(optionBaseline.getOpt()));
                     } catch (JSONException e) {
                         System.err.printf("Ignoring malformed line %s\n", line);
                     }
                 });
+                if (commandLine.hasOption(optionBaseline.getOpt())) {
+                    for (Long k : l.sensors.keySet()) {
+                        List<Package> res = l.baseLineProcess(k);
+                        for (Package r : res) {
+                            System.out.println(r.toJsonString(false, ranges, l.topologyAnalyzer));
+                        }
+                    }
+                }
             } catch (IOException e) {
                 e.printStackTrace();
                 System.exit(3);
@@ -200,8 +229,28 @@ public class Main {
             String userInput = "";
             System.out.println("Please enter your JSON packages (one package per line)");
             System.out.println("Example package: { \"deviceId\": 10, \"timestamp\": 50, \"contacts\": [{ \"deviceId\": 11, \"strength\": 0.7 }] }\n");
+
+            if (commandLine.hasOption(optionBaseline.getOpt())) {
+                System.out.println("Press enter twice to get your evaluation");
+            }
+
             while (true) {
                 userInput = reader.readLine();
+                boolean compat = false;
+                if (userInput.equals("") && commandLine.hasOption(optionBaseline.getOpt())) {
+                    String more = reader.readLine();
+                    if (more.equals("")) {
+                        for (Long k : l.sensors.keySet()) {
+                            List<Package> res = l.baseLineProcess(k);
+                            for (Package r : res) {
+                                System.out.println(r.toJsonString(compat, ranges, l.topologyAnalyzer));
+                            }
+                        }
+                        continue;
+                    } else {
+                        userInput += more;
+                    }
+                }
                 if (!Pattern.matches("^\\s*\\{.*", userInput)) {
                     System.err.println("Please enter a valid JSON object");
                     continue;
@@ -211,7 +260,7 @@ public class Main {
                     userInput += reader.readLine();
                 }
                 try {
-                    parseJsonLine(userInput, l);
+                    compat = parseJsonLine(userInput, l, ranges, commandLine.hasOption(optionBaseline.getOpt()));
                 } catch (JSONException e) {
                     System.err.println("Ignoring malformed line");
                 }
@@ -219,13 +268,22 @@ public class Main {
         }
     }
 
-    static void parseJsonLine(String line, Locator l) {
+    static boolean parseJsonLine(String line, Locator l, List<Long[]> pairs, boolean baseline) {
         JSONObject obj = new JSONObject(line);
 
-        JSONArray contacts = obj.getJSONArray("contacts");
+        JSONArray contacts;
+        boolean compat = false;
+
+        try {
+            contacts = obj.getJSONArray("contacts");
+        } catch (JSONException e) {
+            compat = true;
+            contacts = obj.getJSONArray("value");
+        }
+
         long sid = 1L;
         try {
-            sid = obj.getLong("deviceId");
+            sid = compat ? obj.getLong("id") : obj.getLong("deviceId");
         } catch (JSONException e) {
             // Var stays with its initial value
         }
@@ -233,21 +291,32 @@ public class Main {
         Package p;
         if (contacts.length() > 0) {
             HashSet<WirelessContact> contactSet = new HashSet<>();
-            for (int i = 0; i < contacts.length(); i += 2) {
-                JSONObject jsonContact = contacts.getJSONObject(i);
-                contactSet.add(new WirelessContact(jsonContact.getInt("deviceId"), jsonContact.getFloat("strength")));
+            if (!compat) {
+                for (int i = 0; i < contacts.length(); i += 1) {
+                    JSONObject jsonContact = contacts.getJSONObject(i);
+                    contactSet.add(new WirelessContact(jsonContact.getInt("deviceId"), jsonContact.getFloat("strength")));
+                }
+            } else {
+                for (int i = 0; i < contacts.length(); i += 2) {
+                    contactSet.add(new WirelessContact(contacts.getInt(i), contacts.getFloat(i + 1)));
+                }
             }
-
-            p = new Package(sid, obj.getLong("timestamp"), contactSet);
+            p = new Package(sid, compat ? obj.getLong("time") : obj.getLong("timestamp"), contactSet);
         } else {
-            p = new Package(sid, obj.getLong("timestamp"));
+            p = new Package(sid, compat ? obj.getLong("time") : obj.getLong("timestamp"));
         }
 
-        List<Package> result = l.feed(p);
+        if (baseline) {
+            l.baseLineFeed(p);
+        } else {
+            List<Package> result = l.feed(p);
 
-        for (Package r : result) {
-            System.out.print(r.toJsonString());
+            for (Package r : result) {
+                System.out.println(r.toJsonString(compat, pairs, l.topologyAnalyzer));
+            }
         }
+
+        return compat;
     }
 
     static void printHelpMessage(HelpFormatter formatter, Options options, int status) {
